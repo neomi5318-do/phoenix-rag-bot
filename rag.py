@@ -16,6 +16,7 @@ import re
 import time
 
 import chromadb
+import requests
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -33,6 +34,11 @@ client = genai.Client(
 # (כ-20 בקשות ביום ו-5 בדקה), אז כשמודל נחסם עוברים לבא בתור.
 CHAT_MODELS = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash",
                "gemini-3.5-flash", "gemini-3.1-flash-lite"]
+# גיבוי אחרון: Groq (מודלים פתוחים, כ-1,000 בקשות ביום בחינם). העברית שלהם
+# טובה פחות מ-Gemini, ולכן הם בסוף השרשרת - עדיף תשובה טובה פחות מבוט שלא עונה.
+GROQ_MODELS = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+_exhausted_today = set()   # מודלים שמיצו את המכסה היומית - לא מנסים שוב באותה הרצה
 VECTOR_K = 15       # כמה קטעים מביאים מהחיפוש הסמנטי
 KEYWORD_K = 15      # כמה מחיפוש מילות המפתח
 FINAL_K = 7         # כמה קטעים נכנסים בסוף לפרומפט
@@ -130,29 +136,57 @@ ANSWER_SCHEMA = {
 }
 
 
-def generate(prompt, system, json_mode=False):
-    """שולח למודל הראשי; אם המכסה שלו נגמרה, או שהתשובה לא תקינה - עובר למודל הבא."""
+RETRYABLE = ("429", "RESOURCE_EXHAUSTED", "503", "504", "500", "UNAVAILABLE", "DEADLINE",
+             "INTERNAL", "404", "timed out", "Timeout", "rate_limit", "over_capacity")
+
+
+def _gemini(model, prompt, system, json_mode):
     config = types.GenerateContentConfig(
         system_instruction=system,
         temperature=0.1,
         response_mime_type="application/json" if json_mode else "text/plain",
         response_schema=ANSWER_SCHEMA if json_mode else None,
     )
+    return client.models.generate_content(model=model, contents=prompt, config=config).text
+
+
+def _groq(model, prompt, system, json_mode):
+    key = os.getenv("GROQ_API_KEY")
+    if not key:
+        raise RuntimeError("404 no GROQ_API_KEY")
+    body = {"model": model, "temperature": 0.1,
+            "messages": [{"role": "system", "content": system},
+                         {"role": "user", "content": prompt}]}
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
+    r = requests.post(GROQ_URL, json=body, timeout=60,
+                      headers={"Authorization": f"Bearer {key}"})
+    if r.status_code != 200:
+        raise RuntimeError(f"{r.status_code} {r.text[:200]}")
+    return r.json()["choices"][0]["message"]["content"]
+
+
+def generate(prompt, system, json_mode=False):
+    """עובר על שרשרת המודלים: Gemini (כמה מודלים) ואז Groq.
+    מודל שנחסם על מכסה, עמוס, או החזיר JSON לא תקין - עוברים לבא בתור."""
+    chain = [(m, _gemini) for m in CHAT_MODELS] + [(m, _groq) for m in GROQ_MODELS]
     last_error = None
     for round_no in range(2):           # סבב שני - אחרי המתנה, למקרה של מגבלה לדקה
-        for model in CHAT_MODELS:
+        for model, call in chain:
+            if model in _exhausted_today:
+                continue
             try:
-                r = client.models.generate_content(model=model, contents=prompt, config=config)
-                if json_mode and parse_json(r.text or "") is None:
+                text = call(model, prompt, system, json_mode)
+                if json_mode and parse_json(text or "") is None:
                     last_error = ValueError(f"JSON לא תקין מ-{model}")
                     continue
-                return r.text, model
+                return text, model
             except Exception as e:
                 last_error = e
-                s = str(e)
-                if not any(k in s for k in ("429", "RESOURCE_EXHAUSTED", "503", "504", "500",
-                                            "UNAVAILABLE", "DEADLINE", "INTERNAL", "404",
-                                            "timed out", "Timeout")):
+                msg = str(e)
+                if "PerDay" in msg:
+                    _exhausted_today.add(model)
+                if not any(k in msg for k in RETRYABLE):
                     raise
         time.sleep(20)
     raise last_error

@@ -9,8 +9,9 @@ import os
 import streamlit as st
 
 try:
-    if "GEMINI_API_KEY" in st.secrets and not os.getenv("GEMINI_API_KEY"):
-        os.environ["GEMINI_API_KEY"] = st.secrets["GEMINI_API_KEY"]
+    for name in ("GEMINI_API_KEY", "GROQ_API_KEY"):
+        if name in st.secrets and not os.getenv(name):
+            os.environ[name] = st.secrets[name]
 except Exception:
     pass  # אין קובץ secrets - מריצים מקומית עם .env
 

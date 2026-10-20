@@ -1,9 +1,20 @@
 """
 שלב 5 - ממשק הצ'אט. הפעלה:  streamlit run app.py
+
+המפתח של Gemini נקרא מהקובץ .env (בהרצה מקומית), או מה-Secrets של
+Streamlit Community Cloud (בהרצה בענן).
 """
+import os
+
 import streamlit as st
 
-import rag
+try:
+    if "GEMINI_API_KEY" in st.secrets and not os.getenv("GEMINI_API_KEY"):
+        os.environ["GEMINI_API_KEY"] = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    pass  # אין קובץ secrets - מריצים מקומית עם .env
+
+import rag  # noqa: E402  (אחרי שהמפתח הוגדר)
 
 st.set_page_config(page_title="הבוט של אתר הפניקס", page_icon="💬", layout="centered")
 

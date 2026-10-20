@@ -1,6 +1,10 @@
 .env
 .venv/
 __pycache__/
-data/
-chroma_db/
 *.log
+.streamlit/secrets.toml
+
+# הנתונים הגולמיים לא בריפו (נוצרים מחדש ע"י collect_pages.py)
+data/*
+# אבל הקטעים והאינדקס כן - כדי שהבוט יעלה בענן בלי לבנות הכול מחדש
+!data/chunks.json

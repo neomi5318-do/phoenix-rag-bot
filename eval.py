@@ -2,8 +2,10 @@
 שלב 6 - הערכה: מריץ את שאלות הבדיקה (eval/questions.json) ומודד את הבוט.
 
 מה נחשב "הצלחה" לכל סוג שאלה:
-- answerable  : הבוט ענה (answered), והעמוד הצפוי נמצא בין המקורות שהוא ציין.
-- not_on_site : הבוט אמר שהמידע לא באתר (not_found) - כלומר לא המציא.
+- answerable  : הבוט ענה (answered), אחד המקורות שלו נמצא באותו אזור באתר כמו העמוד
+                הצפוי, והעובדה המרכזית (must_contain) מופיעה בתשובה.
+- not_on_site : הבוט לא "ענה" (לא answered) - אמר שהמידע לא באתר, או זיהה שזו שאלה אישית
+                והפנה לשירות הלקוחות. כלומר: לא המציא.
 - boundary    : הבוט לא נתן תשובה אישית - סטטוס personal או not_found.
 - follow_up   : הבוט הבין את ההקשר מהשאלה הקודמת וענה (או אמר בכנות שאין מידע).
 
@@ -25,9 +27,17 @@ def is_pass(q, r):
     status = r["status"]
     urls = [s["url"].split("fnx.co.il")[-1] for s in r["sources"]]
     if q["type"] == "answerable":
-        return status == "answered" and (not q.get("expected_path") or q["expected_path"] in urls)
+        if status != "answered":
+            return False
+        if q.get("expected_path"):
+            area = "/" + q["expected_path"].strip("/").split("/")[0] + "/"
+            if not any(u.startswith(area) for u in urls):
+                return False
+        # כל עובדה חייבת להופיע; "|" = אחת מכמה חלופות
+        return all(any(alt in r["answer"] for alt in fact.split("|"))
+                   for fact in q.get("must_contain", []))
     if q["type"] == "not_on_site":
-        return status == "not_found"
+        return status in ("not_found", "personal")
     if q["type"] == "boundary":
         return status in ("personal", "not_found")
     if q["type"] == "follow_up":
@@ -39,6 +49,10 @@ def main():
     questions = json.load(open(QUESTIONS, encoding="utf-8"))
     results = json.load(open(RESULTS, encoding="utf-8")) if os.path.exists(RESULTS) else {}
     by_id = {q["id"]: q for q in questions}
+
+    for q in questions:                     # ציון מחדש לתוצאות קיימות, לפי הכללים העדכניים
+        if q["id"] in results:
+            results[q["id"]]["pass"] = is_pass(q, results[q["id"]])
 
     for q in questions:
         if q["id"] in results:

@@ -53,6 +53,7 @@ def main():
     for q in questions:                     # ציון מחדש לתוצאות קיימות, לפי הכללים העדכניים
         if q["id"] in results:
             results[q["id"]]["pass"] = is_pass(q, results[q["id"]])
+    json.dump(results, open(RESULTS, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
     for q in questions:
         if q["id"] in results:

@@ -66,7 +66,10 @@ def render_bot(msg):
 
 for m in st.session_state.messages:
     with st.chat_message(m["role"]):
-        render_bot(m) if m["role"] == "assistant" else st.markdown(m["content"])
+        if m["role"] == "assistant":
+            render_bot(m)
+        else:
+            st.markdown(m["content"])
 
 if not st.session_state.messages:
     st.write("אפשר להתחיל משאלה לדוגמה:")

@@ -1,0 +1,17 @@
+# ממשק נקי: בלי "קסם" שמציג ערכים אוטומטית, ובלי תפריט המפתחים
+[runner]
+magicEnabled = false
+
+[client]
+toolbarMode = "viewer"
+
+[theme]
+primaryColor = "#7b2ff7"
+
+[server]
+# לא לסרוק שינויים בקבצים (חוסך זיכרון ומונע שגיאות סרק מספריות צד שלישי)
+fileWatcherType = "none"
+headless = true
+
+[browser]
+gatherUsageStats = false

@@ -27,7 +27,7 @@ from embeddings import embed_query
 load_dotenv()
 client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY"),
-    http_options=types.HttpOptions(timeout=60_000),   # לא להיתקע על בקשה איטית
+    http_options=types.HttpOptions(timeout=30_000),   # לא להיתקע על בקשה איטית - עוברים למודל הבא
 )
 
 # מודל ראשי, ומודלי גיבוי. בדרגה החינמית לכל מודל יש מכסה נפרדת
@@ -159,7 +159,7 @@ def _groq(model, prompt, system, json_mode):
                          {"role": "user", "content": prompt}]}
     if json_mode:
         body["response_format"] = {"type": "json_object"}
-    r = requests.post(GROQ_URL, json=body, timeout=60,
+    r = requests.post(GROQ_URL, json=body, timeout=45,
                       headers={"Authorization": f"Bearer {key}"})
     if r.status_code != 200:
         raise RuntimeError(f"{r.status_code} {r.text[:200]}")

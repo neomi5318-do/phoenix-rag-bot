@@ -21,13 +21,18 @@ from google import genai
 from google.genai import types
 from rank_bm25 import BM25Okapi
 
-load_dotenv()
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+from embeddings import embed_query
 
-EMBED_MODEL = "gemini-embedding-001"
-EMBED_DIM = 768
-# מודל ראשי, ומודלי גיבוי למקרה שהמכסה שלו נגמרת
-CHAT_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-2.5-flash"]
+load_dotenv()
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY"),
+    http_options=types.HttpOptions(timeout=60_000),   # לא להיתקע על בקשה איטית
+)
+
+# מודל ראשי, ומודלי גיבוי. בדרגה החינמית לכל מודל יש מכסה נפרדת
+# (כ-20 בקשות ביום ו-5 בדקה), אז כשמודל נחסם עוברים לבא בתור.
+CHAT_MODELS = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash",
+               "gemini-3.5-flash", "gemini-3.1-flash-lite"]
 VECTOR_K = 15       # כמה קטעים מביאים מהחיפוש הסמנטי
 KEYWORD_K = 15      # כמה מחיפוש מילות המפתח
 FINAL_K = 7         # כמה קטעים נכנסים בסוף לפרומפט
@@ -109,32 +114,6 @@ def load_index(db_path="chroma_db", chunks_path="data/chunks.json"):
 
 # ---------- קריאות למודלים ----------
 
-def _with_retry(fn, tries=4):
-    wait = 5
-    for attempt in range(tries):
-        try:
-            return fn()
-        except Exception as e:
-            msg = str(e)
-            if ("429" in msg or "RESOURCE_EXHAUSTED" in msg or "503" in msg
-                    or "UNAVAILABLE" in msg) and attempt < tries - 1:
-                time.sleep(wait)
-                wait *= 2
-            else:
-                raise
-
-
-def embed_query(text):
-    result = _with_retry(lambda: client.models.embed_content(
-        model=EMBED_MODEL,
-        contents=text,
-        config=types.EmbedContentConfig(
-            task_type="RETRIEVAL_QUERY", output_dimensionality=EMBED_DIM
-        ),
-    ))
-    return result.embeddings[0].values
-
-
 def generate(prompt, system, json_mode=False):
     """שולח למודל הראשי; אם המכסה שלו נגמרה - עובר למודל הגיבוי הבא."""
     config = types.GenerateContentConfig(
@@ -143,16 +122,18 @@ def generate(prompt, system, json_mode=False):
         response_mime_type="application/json" if json_mode else "text/plain",
     )
     last_error = None
-    for model in CHAT_MODELS:
-        try:
-            r = _with_retry(lambda: client.models.generate_content(
-                model=model, contents=prompt, config=config), tries=2)
-            return r.text, model
-        except Exception as e:
-            last_error = e
-            if "429" not in str(e) and "RESOURCE_EXHAUSTED" not in str(e) \
-                    and "503" not in str(e) and "404" not in str(e):
-                raise
+    for round_no in range(2):           # סבב שני - אחרי המתנה, למקרה של מגבלה לדקה
+        for model in CHAT_MODELS:
+            try:
+                r = client.models.generate_content(model=model, contents=prompt, config=config)
+                return r.text, model
+            except Exception as e:
+                last_error = e
+                s = str(e)
+                if not any(k in s for k in ("429", "RESOURCE_EXHAUSTED", "503",
+                                            "UNAVAILABLE", "404", "timed out", "Timeout")):
+                    raise
+        time.sleep(20)
     raise last_error
 
 

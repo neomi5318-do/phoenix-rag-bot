@@ -130,8 +130,9 @@ def generate(prompt, system, json_mode=False):
             except Exception as e:
                 last_error = e
                 s = str(e)
-                if not any(k in s for k in ("429", "RESOURCE_EXHAUSTED", "503",
-                                            "UNAVAILABLE", "404", "timed out", "Timeout")):
+                if not any(k in s for k in ("429", "RESOURCE_EXHAUSTED", "503", "504", "500",
+                                            "UNAVAILABLE", "DEADLINE", "INTERNAL", "404",
+                                            "timed out", "Timeout")):
                     raise
         time.sleep(20)
     raise last_error

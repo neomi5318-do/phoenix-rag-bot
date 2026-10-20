@@ -14,7 +14,7 @@ import json
 import os
 import time
 from datetime import datetime, timezone
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -54,8 +54,22 @@ def get_urls():
     return list(dict.fromkeys(chosen)), len(urls)
 
 
+def get_following_redirects(url, max_hops=5):
+    """עוקב אחרי הפניות בעצמו, ומשדרג כל הפניה ל-http לכתובת https.
+    (חלק מהעמודים באתר מפנים לכתובת http, שלא תמיד נגישה.)"""
+    for _ in range(max_hops):
+        r = requests.get(url, headers=HEADERS, timeout=30, allow_redirects=False)
+        if r.status_code in (301, 302, 303, 307, 308) and "Location" in r.headers:
+            url = urljoin(url, r.headers["Location"])
+            if url.startswith("http://"):
+                url = "https://" + url[len("http://"):]
+            continue
+        return r
+    return r
+
+
 def fetch_page(url):
-    r = requests.get(url, headers=HEADERS, timeout=30)
+    r = get_following_redirects(url)
     record = {
         "url": url,
         "final_url": r.url,  # אם הייתה הפניה, זו הכתובת שבה הסתיים

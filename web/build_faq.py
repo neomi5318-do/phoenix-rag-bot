@@ -29,7 +29,7 @@ TOPICS = [
     ("נסיעות לחו\"ל", ["איך מאריכים ביטוח נסיעות כשכבר נמצאים בחו\"ל?",
                        "אפשר לקנות ביטוח נסיעות עם מחלה כרונית?"]),
 ]
-OUT = os.path.join(HERE, "faq.json")
+OUT = os.path.join(HERE, "public", "faq.json")
 
 
 def main():

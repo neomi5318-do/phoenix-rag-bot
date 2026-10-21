@@ -6,7 +6,7 @@
 ## הארכיטקטורה בקצרה
 
 ```
- דפדפן                                    שרת (Vercel, פונקציה אחת בפייתון)
+ דפדפן                                    שרת (Vercel, אפליקציית Flask אחת)
  ─────────                                 ─────────────────────────────────
  widget.js  ── GET /api/ask ──────────────▶ "חימום": טוען מודל + אינדקס לזיכרון
             ── POST /api/ask {שאלה} ─────▶ 1. retrieval.py  חיפוש היברידי → 6 קטעים
@@ -14,19 +14,21 @@
                                              3. llm.py        Gemini / Groq ("מירוץ מגובה")
                                              4. bot.py        אימות ציטוט, מקורות, מוקד
             ◀── {סטטוס, תשובה, מקורות, מוקד}
- faq.json   (שאלות נפוצות - קובץ סטטי, נבדק ידנית)
+ public/faq.json   (שאלות נפוצות - קובץ סטטי, נבדק ידנית)
 ```
 
 | קובץ | מה הוא עושה |
 |---|---|
-| `api/ask.py` | נקודת הקצה היחידה. GET = חימום, POST = שאלה ותשובה |
+| `app.py` | השרת (Flask). נקודת קצה אחת: `/api/ask`. GET = חימום, POST = שאלה ותשובה |
 | `lib/embedder.py` | הופך את השאלה לווקטור, עם multilingual-e5-base בגרסת ONNX מכווצת (בלי PyTorch) |
 | `lib/retrieval.py` | חיפוש סמנטי + מילות מפתח (BM25), ומיזוג RRF |
 | `lib/bot.py` | הפרומפט והכללים, אימות הציטוט, ניתוב למוקד |
 | `lib/llm.py` | שרשרת המודלים ו"המירוץ המגובה" |
 | `data/` | הקטעים, הווקטורים שלהם, ו-10 המוקדים (אומתו מול עמוד "צור קשר") |
-| `widget.js` / `widget.css` | הצ'אט עצמו - JavaScript רגיל, בלי ספריות |
-| `index.html` | דף ההצגה |
+| `public/widget.js`, `public/widget.css` | הצ'אט עצמו - JavaScript רגיל, בלי ספריות |
+| `public/index.html` | דף ההצגה |
+| `public/faq.json` | השאלות הנפוצות |
+| `public/fonts/` | הגופנים (Rubik, Suez One - רישיון OFL), בלי תלות ב-Google Fonts |
 
 ## ההחלטות החשובות, ולמה
 
@@ -62,12 +64,13 @@
 
 ```bash
 pip install -r requirements.txt
-python dev_server.py        # http://localhost:8000  (המפתחות נקראים מ-../.env)
+python app.py               # http://localhost:8000  (המפתחות נקראים מ-../.env)
 ```
 
 ## העלאה ל-Vercel
 
 New Project ← לבחור את הריפו ← **Root Directory: `web`** ← Environment Variables: `GEMINI_API_KEY`, `GROQ_API_KEY` ← Deploy.
+Vercel מזהה את Flask לבד (`app.py`), ומגיש את `public/` ישירות מה-CDN.
 
 ## עדכון תוכן
 

@@ -132,6 +132,18 @@ HOW_TO = re.compile(r"איך מגיש|איך להגיש|מה צריך|אילו �
                     r"how (do|to|can)|what (documents|should)|как (подать|оформить)|что (делать|нужно)|كيف|ماذا")
 
 
+LANG_NAMES = {"ru": "Russian (русский)", "ar": "Arabic (العربية)", "en": "English",
+              "am": "Amharic (አማርኛ)", "fr": "French (français)"}
+
+
+def question_language(text):
+    """שפת השאלה לפי האותיות שבה (מספיק טוב לעברית/רוסית/ערבית/אמהרית/אנגלית)."""
+    counts = {"he": len(re.findall(r"[\u0590-\u05FF]", text)), "ru": len(re.findall(r"[\u0400-\u04FF]", text)),
+              "ar": len(re.findall(r"[\u0600-\u06FF]", text)), "am": len(re.findall(r"[\u1200-\u137F]", text)),
+              "en": len(re.findall(r"[a-zA-Z]", text))}
+    return max(counts, key=counts.get) if any(counts.values()) else "he"
+
+
 def build_prompt(question, history, chunks):
     parts = []
     for i, c in enumerate(chunks, 1):
@@ -142,6 +154,9 @@ def build_prompt(question, history, chunks):
         convo = "השיחה עד עכשיו:\n" + "\n".join(
             f"לקוח: {h['q']}\nבוט: {h['a']}" for h in history[-3:]) + "\n\n"
     hint = ""
+    lang = question_language(question)
+    if lang != "he":                                 # המודלים נוטים לחזור לעברית - מבקשים במפורש
+        hint += f"\nחובה: כתוב/כתבי את answer, table ו-checklist בשפה: {LANG_NAMES.get(lang, lang)}."
     if COMPARE.search(question):
         hint += "\nזו שאלת השוואה: החזר/י גם table מלאה (אם יש בקטעים מידע להשוואה)."
     if HOW_TO.search(question):
@@ -202,7 +217,35 @@ def _clean_table(t):
 def _clean_checklist(items):
     if not isinstance(items, list):
         return []
-    return [_clean(str(i))[:140] for i in items if isinstance(i, str) and _clean(i)][:7]
+    items = [re.sub(r"^\s*([-•*]|\d+[.)])\s*", "", str(i)) for i in items if isinstance(i, str)]
+    return [_clean(i)[:140] for i in items if _clean(i)][:7]
+
+
+def _hebrew_share(result):
+    """כמה מהאותיות בתשובה (כולל רשימה וטבלה) הן בעברית."""
+    parts = [result["answer"]] + result.get("checklist", [])
+    if result.get("table"):
+        parts += result["table"]["columns"] + [c for row in result["table"]["rows"] for c in row]
+    letters = re.findall(r"[^\W\d_]", " ".join(parts))
+    return sum(1 for ch in letters if HEBREW.match(ch)) / max(len(letters), 1)
+
+
+def _translate(result, lang):
+    """אם המודל ענה בעברית למרות שנשאל בשפה אחרת - מתרגמים את התשובה (קריאה נוספת, רק במקרה הזה)."""
+    payload = {"answer": result["answer"], "checklist": result.get("checklist", []),
+               "table": result.get("table") or {"columns": [], "rows": []}}
+    system = (f"Translate the JSON values to {LANG_NAMES.get(lang, lang)}. Keep the same JSON structure "
+              "and meaning, translate faithfully, do not add information. Return JSON only.")
+    data, _ = llm.generate_json(system, json.dumps(payload, ensure_ascii=False), {
+        "type": "object", "properties": {
+            "answer": {"type": "string"}, "checklist": {"type": "array", "items": {"type": "string"}},
+            "table": ANSWER_SCHEMA["properties"]["table"]}, "required": ["answer"]},
+        lambda d: isinstance(d, dict) and isinstance(d.get("answer"), str))
+    result["answer"] = data["answer"].strip()
+    if result.get("checklist"):
+        result["checklist"] = _clean_checklist(data.get("checklist")) or result["checklist"]
+    if result.get("table"):
+        result["table"] = _clean_table(data.get("table")) or result["table"]
 
 
 def _valid(data):
@@ -251,5 +294,13 @@ def answer(question, history, chunks):
             extras["checklist"] = checklist
 
     dept_key = data.get("department") if data.get("department") in departments() else "general"
-    return {"status": status, "answer": text, "sources": sources, **extras,
-            "department": {"key": dept_key, **departments()[dept_key]}, "model": model}
+    result = {"status": status, "answer": text, "sources": sources, **extras,
+              "department": {"key": dept_key, **departments()[dept_key]}, "model": model}
+
+    lang = question_language(question)
+    if lang != "he" and _hebrew_share(result) > 0.05:  # נשאר בתשובה טקסט בעברית -> מתרגמים
+        try:
+            _translate(result, lang)
+        except Exception as e:  # noqa: BLE001 - אם התרגום נכשל, נשארים עם מה שיש
+            print("translate error:", repr(e))
+    return result

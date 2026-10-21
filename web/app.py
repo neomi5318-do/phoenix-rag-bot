@@ -2,7 +2,8 @@
 השרת של הבוט (Flask). ב-Vercel הוא רץ כפונקציה אחת; הקבצים שבתיקייה public/
 (הדף, הווידג'ט, הגופנים והשאלות הנפוצות) מוגשים ישירות, בלי לעבור כאן.
 
-נקודת קצה אחת:
+נקודות קצה:
+  GET  /api/insights -> הנתונים לדוח "מה הלקוחות שואלים ואין לזה תשובה באתר"
   GET  /api/ask  -> "חימום": טוען את המודל לזיכרון כשהדף נפתח
   POST /api/ask  -> {"question": "...", "history": [{"q": ..., "a": ...}]}
                     1. מחפש באתר את 6 הקטעים הרלוונטיים (lib/retrieval.py)
@@ -15,7 +16,7 @@ import time
 
 from flask import Flask, jsonify, request, send_from_directory
 
-from lib import bot, retrieval
+from lib import bot, insights, retrieval
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = os.path.join(HERE, "public")
@@ -61,10 +62,21 @@ def ask():
         chunks = retrieval.search(bot.search_query(question, history))
         result = bot.answer(question, history, chunks)
         result["ms"] = int((time.time() - t) * 1000)
+        insights.record(question, result)            # לדוח "פערי תוכן" (בלי פרטים מזהים)
         return jsonify(result)
     except Exception as e:  # noqa: BLE001
         print("ask error:", repr(e))
         return jsonify(error="המערכת עמוסה כרגע. נסו שוב בעוד רגע."), 503
+
+
+@app.route("/api/insights")
+def insights_report():
+    """הנתונים למסך "מה הלקוחות שואלים" (public/insights.html)."""
+    try:
+        return jsonify(insights.report())
+    except Exception as e:  # noqa: BLE001
+        print("insights report error:", repr(e))
+        return jsonify(enabled=False, error="הדוח לא זמין כרגע"), 503
 
 
 @app.route("/")

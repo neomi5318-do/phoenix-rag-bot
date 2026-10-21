@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>מקור · מה הלקוחות שואלים</title>
+<meta name="description" content="דוח לצוות הפניקס: השאלות שלקוחות שאלו את הבוט, ואין עליהן תשובה באתר.">
+<link rel="stylesheet" href="widget.css" data-mk-css>
+<style>
+/* layout: לוח בקרה בעמודה אחת - מספרים למעלה, נושאים, ואז רשימת השאלות שלא נענו */
+:root {
+  --bg: #f4f6fa; --surface: #ffffff; --ink: #172033; --muted: #5f6b7d; --line: #e1e6ee;
+  --accent: #e8572a; --ok: #0f7b62; --warn: #b4540a; --mark: #ffe066;
+  --display: "Suez One", "Rubik", Georgia, serif;
+  --body: "Rubik", "Assistant", system-ui, "Segoe UI", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1420; --surface: #151b28; --ink: #e9edf5; --muted: #a3adbf; --line: #262e40; --ok: #6fd3b5; --warn: #f3a35b; --mark: #7a6514; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1420; --surface: #151b28; --ink: #e9edf5; --muted: #a3adbf; --line: #262e40; --ok: #6fd3b5; --warn: #f3a35b; --mark: #7a6514; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); line-height: 1.6; }
+.wrap { max-width: 980px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px)); padding-block: 24px 56px; display: flex; flex-direction: column; gap: 28px; }
+.top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.top a { color: var(--muted); text-decoration: none; font-size: 15px; }
+.top a:hover { color: var(--ink); }
+.eyebrow { color: var(--accent); font-weight: 600; font-size: 14px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 44px); line-height: 1.15; margin: 4px 0 8px; text-wrap: balance; }
+h1 span { background: linear-gradient(transparent 55%, var(--mark) 55%, var(--mark) 92%, transparent 92%); }
+.lede { margin: 0; color: var(--muted); max-width: 62ch; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.stat b { display: block; font-family: var(--display); font-size: 34px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 14px; }
+.stat.gap b { color: var(--warn); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.panel h2 { margin: 0; font-size: 19px; }
+.bar { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr) 40px; align-items: center; gap: 10px; font-size: 14.5px; }
+.bar-track { height: 12px; border-radius: 6px; background: var(--bg); overflow: hidden; }
+.bar-fill { height: 100%; background: var(--warn); border-radius: 6px; }
+.bar b { text-align: left; font-variant-numeric: tabular-nums; }
+.q { display: flex; gap: 12px; justify-content: space-between; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.q:last-child { border-bottom: 0; }
+.q p { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.q small { color: var(--muted); white-space: nowrap; font-size: 12.5px; }
+.tag { display: inline-block; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; margin-inline-start: 6px; }
+.empty { color: var(--muted); }
+.note { font-size: 13.5px; color: var(--muted); }
+@media (max-width: 720px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bar { grid-template-columns: minmax(0, 1fr) 40px; }
+  .bar-track { grid-column: 1 / -1; grid-row: 2; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="top"><a href="/">→ חזרה לבוט</a></nav>
+  <header>
+    <div class="eyebrow">לצוות הפניקס</div>
+    <h1>מה הלקוחות שואלים, <span>ואין לזה תשובה באתר</span></h1>
+    <p class="lede">כל שאלה שהבוט לא מצא לה תשובה באתר נרשמת כאן. זו רשימה מוכנה של תוכן שכדאי להוסיף לאתר: הלקוחות כבר אמרו מה חסר להם.</p>
+  </header>
+
+  <section class="stats" id="stats" aria-label="סיכום">
+    <div class="stat"><b id="s-total">–</b><span>שאלות נשאלו</span></div>
+    <div class="stat"><b id="s-answered">–</b><span>נענו מהאתר</span></div>
+    <div class="stat"><b id="s-personal">–</b><span>שאלות אישיות (הופנו למוקד)</span></div>
+    <div class="stat gap"><b id="s-gap">–</b><span>אין תשובה באתר</span></div>
+  </section>
+
+  <section class="panel">
+    <h2>באיזה נושא חסר הכי הרבה מידע</h2>
+    <div id="topics"><p class="empty">טוען…</p></div>
+  </section>
+
+  <section class="panel">
+    <h2>השאלות האחרונות שלא נמצאה להן תשובה</h2>
+    <div id="recent"><p class="empty">טוען…</p></div>
+  </section>
+
+  <p class="note">פרטיות: נשמר רק נוסח השאלה, אחרי מחיקה אוטומטית של מספרים ארוכים וכתובות מייל, והנושא שהבוט זיהה. לא נשמרים שם, כתובת IP או כל פרט מזהה.</p>
+</div>
+
+<script>
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function pct(n, total) { return total ? Math.round(100 * n / total) + "%" : "–"; }
+  fetch("/api/insights").then(function (r) { return r.json(); }).then(function (d) {
+    if (!d.enabled) {
+      document.getElementById("topics").innerHTML = '<p class="empty">הדוח עוד לא מחובר למסד נתונים.</p>';
+      document.getElementById("recent").innerHTML = "";
+      return;
+    }
+    document.getElementById("s-total").textContent = d.total.toLocaleString("he-IL");
+    document.getElementById("s-answered").textContent = pct(d.answered, d.total);
+    document.getElementById("s-personal").textContent = pct(d.personal, d.total);
+    document.getElementById("s-gap").textContent = pct(d.not_found, d.total);
+
+    var max = d.topics.length ? d.topics[0][1] : 0;
+    document.getElementById("topics").innerHTML = d.topics.length ? d.topics.map(function (t) {
+      return '<div class="bar"><span>' + esc(t[0]) + '</span><div class="bar-track"><div class="bar-fill" style="width:' +
+        Math.max(4, 100 * t[1] / max) + '%"></div></div><b>' + t[1] + "</b></div>";
+    }).join("") : '<p class="empty">עוד אין שאלות כאלה. הן יופיעו כאן כשלקוחות ישאלו משהו שלא כתוב באתר.</p>';
+
+    document.getElementById("recent").innerHTML = d.recent.length ? d.recent.map(function (g) {
+      var when = new Date(g.ts * 1000).toLocaleDateString("he-IL", { day: "numeric", month: "numeric" });
+      return '<div class="q"><p dir="auto">' + esc(g.q) + (g.topic ? '<span class="tag">' + esc(g.topic) + "</span>" : "") +
+        "</p><small>" + when + "</small></div>";
+    }).join("") : '<p class="empty">עוד אין שאלות כאלה.</p>';
+  }).catch(function () {
+    document.getElementById("topics").innerHTML = '<p class="empty">הדוח לא זמין כרגע. נסו לרענן בעוד רגע.</p>';
+    document.getElementById("recent").innerHTML = "";
+  });
+</script>
+</body>
+</html>

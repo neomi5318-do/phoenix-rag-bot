@@ -19,7 +19,7 @@
   var opts = (script && script.dataset) || {};
 
   // טוענים את קובץ העיצוב (אם עוד לא נטען)
-  if (!document.querySelector("link[data-mk-css]")) {
+  if (!document.querySelector("[data-mk-css]")) {
     var css = document.createElement("link");
     css.rel = "stylesheet"; css.href = BASE + "/widget.css"; css.setAttribute("data-mk-css", "");
     document.head.appendChild(css);
@@ -33,6 +33,8 @@
     book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/></svg>',
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
     phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
+    mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+    speaker: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
     ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>'
   };
 
@@ -40,14 +42,37 @@
   var SUGGESTIONS = [
     "יש לי נזילה בבית, איך מגישים תביעה?",
     "מה ההשתתפות העצמית בביטוח לכלב?",
-    "מה ההבדל בין ביטוח מקיף לביטוח צד ג'?"
+    "מה ההבדל בין ביטוח מקיף לביטוח צד ג'?",
+    "Какая франшиза в страховке для собаки?"
   ];
 
-  var STATUS = {
-    answered: "✓ נמצא באתר",
-    not_found: "לא מופיע באתר",
-    personal: "שאלה אישית"
+  // כיתובים לפי שפת התשובה (הבוט עונה בשפה שבה שאלו)
+  var LABELS = {
+    he: { answered: "✓ נמצא באתר", not_found: "לא מופיע באתר", personal: "שאלה אישית", source: "מקור",
+          open: "לראות באתר", openHl: "לראות באתר, מודגש", rep: "צריכים נציג? ", prepare: "מה להכין",
+          ready: "מוכן", listen: "הקראה", stop: "עצירה" },
+    ru: { answered: "✓ Есть на сайте", not_found: "Нет на сайте", personal: "Личный вопрос", source: "Источник",
+          open: "Открыть на сайте", openHl: "Открыть на сайте (с выделением)", rep: "Нужен представитель? ",
+          prepare: "Что подготовить", ready: "готово", listen: "Прослушать", stop: "Стоп" },
+    ar: { answered: "✓ موجود في الموقع", not_found: "غير موجود في الموقع", personal: "سؤال شخصي", source: "المصدر",
+          open: "فتح في الموقع", openHl: "فتح في الموقع مع التظليل", rep: "تحتاج إلى ممثل؟ ",
+          prepare: "ما يجب تحضيره", ready: "جاهز", listen: "استماع", stop: "إيقاف" },
+    en: { answered: "✓ Found on the site", not_found: "Not on the site", personal: "Personal question", source: "Source",
+          open: "Open on the site", openHl: "Open on the site, highlighted", rep: "Need an agent? ",
+          prepare: "What to prepare", ready: "done", listen: "Listen", stop: "Stop" }
   };
+  // שפת טקסט לפי האותיות שבו
+  function langOf(text) {
+    var t = String(text);
+    var count = function (re) { return (t.match(re) || []).length; };
+    var scores = { he: count(/[\u0590-\u05FF]/g), ru: count(/[\u0400-\u04FF]/g),
+                   ar: count(/[\u0600-\u06FF]/g), am: count(/[\u1200-\u137F]/g), en: count(/[a-zA-Z]/g) };
+    var best = "he";
+    Object.keys(scores).forEach(function (k) { if (scores[k] > scores[best]) best = k; });
+    return best;
+  }
+  function labels(lang) { return LABELS[lang] || LABELS.en; }
+  var SPEECH_LANG = { he: "he-IL", ru: "ru-RU", ar: "ar-SA", en: "en-US", am: "am-ET" };
 
   // מה כתוב מתחת לאנימציה בזמן שהבוט עובד
   var THINKING = ["קורא באתר הפניקס…", "מסמן את המשפט הנכון…", "מנסח תשובה ברורה…"];
@@ -66,6 +91,9 @@
   }
   var reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // הדגשה **כך** -> מודגש (אחרי escape, כך שאין סכנה של HTML)
+  function inline(t) { return esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
+
   // טקסט פשוט -> פסקאות ורשימות (שורות שמתחילות ב-"- ")
   function formatAnswer(text) {
     var out = "", list = false;
@@ -74,11 +102,11 @@
       if (!t) return;
       var item = t.match(/^([-•*]|\d+[.)])\s+(.*)$/);
       if (item) {
-        if (!list) { out += "<ul>"; list = true; }
-        out += "<li>" + esc(item[2]) + "</li>";
+        if (!list) { out += '<ul dir="auto">'; list = true; }
+        out += '<li dir="auto">' + inline(item[2]) + "</li>";
       } else {
         if (list) { out += "</ul>"; list = false; }
-        out += "<p>" + esc(t) + "</p>";
+        out += '<p dir="auto">' + inline(t) + "</p>";
       }
     });
     return out + (list ? "</ul>" : "");
@@ -108,13 +136,14 @@
   function waHref(number) { return "https://wa.me/972" + number.replace(/\D/g, "").replace(/^0/, ""); }
 
   // כרטיסי המקורות: שם העמוד, המשפט המודגש, וכפתור לפתיחה באתר
-  function sourcesBlock(sources) {
+  function sourcesBlock(sources, L) {
+    L = L || LABELS.he;
     var list = el("div", "mk-sources");
     sources.forEach(function (s) {
       var card = el("div", "mk-src");
-      card.appendChild(el("div", "mk-src-title", "<span>מקור</span>" + esc(s.title)));
+      card.appendChild(el("div", "mk-src-title", "<span>" + esc(L.source) + "</span>" + esc(s.title)));
       if (s.quote) card.appendChild(el("div", "mk-quote", "<mark>" + esc(s.quote) + "</mark>"));
-      var a = el("a", "mk-src-link", (s.quote ? "לראות באתר, מודגש" : "לראות באתר") + ICON.ext);
+      var a = el("a", "mk-src-link", esc(s.quote ? L.openHl : L.open) + ICON.ext);
       a.href = highlightLink(s.url, s.quote); a.target = "_blank"; a.rel = "noopener";
       card.appendChild(a);
       list.appendChild(card);
@@ -148,6 +177,73 @@
     return card;
   }
 
+  // טבלת השוואה ("מה ההבדל בין...")
+  function tableBlock(t) {
+    var wrap = el("div", "mk-table-wrap");
+    var html = '<table class="mk-table" dir="auto"><thead><tr>' +
+      t.columns.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+      t.rows.map(function (row) {
+        return "<tr>" + row.map(function (c, i) { return (i ? "<td>" : "<th scope=\"row\">") + esc(c) + (i ? "</td>" : "</th>"); }).join("") + "</tr>";
+      }).join("") + "</tbody></table>";
+    wrap.innerHTML = html;
+    return wrap;
+  }
+
+  // רשימת "מה להכין" עם תיבות סימון - הלקוחה מסמנת תוך כדי הכנה
+  function checklistBlock(items, L) {
+    var box = el("div", "mk-check");
+    var head = el("div", "mk-check-head");
+    head.appendChild(el("b", null, "📋 " + esc(L.prepare)));
+    var count = el("span", "mk-check-count", "0/" + items.length + " " + esc(L.ready));
+    head.appendChild(count);
+    box.appendChild(head);
+    items.forEach(function (text) {
+      var row = el("label", "mk-check-item");
+      row.setAttribute("dir", "auto");
+      var cb = document.createElement("input"); cb.type = "checkbox";
+      cb.addEventListener("change", function () {
+        var done = box.querySelectorAll("input:checked").length;
+        count.textContent = done + "/" + items.length + " " + L.ready;
+        box.classList.toggle("is-done", done === items.length);
+      });
+      row.appendChild(cb);
+      row.appendChild(el("span", null, esc(text)));
+      box.appendChild(row);
+    });
+    return box;
+  }
+
+  // הקראת התשובה בקול - מנוע הדיבור שמובנה בדפדפן
+  var synth = window.speechSynthesis;
+  function voiceFor(lang) {
+    if (!synth) return null;
+    var code = SPEECH_LANG[lang] || "he-IL", voices = synth.getVoices();
+    return voices.find(function (v) { return v.lang === code; }) ||
+           voices.find(function (v) { return v.lang && v.lang.slice(0, 2) === code.slice(0, 2); }) || null;
+  }
+  function speakButton(text, lang, L) {
+    if (!synth || !window.SpeechSynthesisUtterance) return null;
+    var btn = el("button", "mk-speak", ICON.speaker + "<span>" + esc(L.listen) + "</span>"); btn.type = "button";
+    btn.addEventListener("click", function () {
+      if (synth.speaking) { synth.cancel(); return; }
+      var u = new SpeechSynthesisUtterance(String(text).replace(/^[-•*]\s+/gm, ""));
+      u.lang = SPEECH_LANG[lang] || "he-IL";
+      var v = voiceFor(lang); if (v) u.voice = v;
+      u.rate = 1;
+      u.onstart = function () { btn.classList.add("is-on"); btn.querySelector("span").textContent = L.stop; };
+      u.onend = u.onerror = function () { btn.classList.remove("is-on"); btn.querySelector("span").textContent = L.listen; };
+      synth.speak(u);
+    });
+    // אם אין בדפדפן קול בשפה הזו - לא מציגים את הכפתור
+    function check() { if (!voiceFor(lang)) btn.hidden = true; }
+    if (synth.getVoices().length) check();
+    else if (synth.addEventListener) synth.addEventListener("voiceschanged", check, { once: true });
+    return btn;
+  }
+
+  // שאלה בקול - זיהוי הדיבור שמובנה בדפדפן (כרום / אדג')
+  var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
   // ---------- הצ'אט ----------
   function Chat(host) {
     this.history = [];             // [{q, a}] - כדי להבין שאלות המשך
@@ -180,6 +276,7 @@
       '<form class="mk-form">' +
       '  <div class="mk-row">' +
       '    <textarea class="mk-input" aria-label="השאלה שלך" rows="1" placeholder="מה תרצו לדעת?"></textarea>' +
+      '    <button class="mk-mic" type="button" aria-label="לשאול בקול" title="לשאול בקול" hidden>' + ICON.mic + "</button>" +
       '    <button class="mk-send" type="submit" aria-label="שליחה">' + ICON.send + "</button>" +
       "  </div>" +
       '  <div class="mk-note">עונה רק ממידע ציבורי באתר הפניקס · אין לשתף פרטים אישיים</div>' +
@@ -206,17 +303,45 @@
     });
     panel.querySelector(".mk-reset").addEventListener("click", function () { self.reset(); });
     this.faqBtn.addEventListener("click", function () { self.toggleFaq(); });
+    this.setupMic(panel.querySelector(".mk-mic"));
     this.welcome();
+  };
+
+  Chat.prototype.setupMic = function (btn) {
+    var self = this;
+    if (!Recognition) return;                       // דפדפן בלי זיהוי דיבור - אין כפתור
+    btn.hidden = false;
+    var rec = null;
+    btn.addEventListener("click", function () {
+      if (rec) { rec.stop(); return; }
+      rec = new Recognition();
+      rec.lang = "he-IL";
+      rec.interimResults = true;
+      rec.onstart = function () { btn.classList.add("is-on"); self.input.placeholder = "מקשיב… דברו עכשיו"; };
+      rec.onresult = function (e) {
+        var text = Array.prototype.map.call(e.results, function (r) { return r[0].transcript; }).join("");
+        self.input.value = text;
+        if (e.results[e.results.length - 1].isFinal) { rec.stop(); self.ask(text); }
+      };
+      rec.onerror = function () { self.input.placeholder = "לא הצלחתי לשמוע. אפשר לנסות שוב או להקליד."; };
+      rec.onend = function () {
+        btn.classList.remove("is-on"); rec = null;
+        if (self.input.placeholder.indexOf("מקשיב") === 0) self.input.placeholder = "מה תרצו לדעת?";
+      };
+      rec.start();
+    });
   };
 
   Chat.prototype.welcome = function () {
     var self = this;
     var box = el("div", "mk-msg mk-bot");
     box.appendChild(el("div", "mk-bubble",
-      "<p><b>שלום!</b> אני עונה רק ממה שכתוב באתר הפניקס, ומראה לכם בדיוק איפה זה כתוב.</p>"));
+      "<p><b>שלום!</b> אני עונה רק ממה שכתוב באתר הפניקס, ומראה לכם בדיוק איפה זה כתוב.</p>" +
+      '<p class="mk-langs">אפשר לשאול גם ב: <span dir="ltr">Русский · العربية · English</span>' +
+      (Recognition ? " · או בקול 🎤" : "") + "</p>"));
     var chips = el("div", "mk-suggest");
     SUGGESTIONS.forEach(function (q) {
-      var b = el("button", "mk-chip", esc(q)); b.type = "button";
+      var b = el("button", "mk-chip", esc(q)); b.type = "button"; b.setAttribute("dir", "auto");
       b.addEventListener("click", function () { self.ask(q); });
       chips.appendChild(b);
     });
@@ -267,7 +392,7 @@
     this.busy = true; this.sendBtn.disabled = true;
     this.input.value = ""; this.input.style.height = "auto";
 
-    var user = el("div", "mk-msg mk-user"); user.textContent = question;
+    var user = el("div", "mk-msg mk-user"); user.textContent = question; user.setAttribute("dir", "auto");
     this.log.appendChild(user);
     var bot = el("div", "mk-msg mk-bot");
     var wait = this.thinking();
@@ -305,20 +430,28 @@
   };
 
   Chat.prototype.showAnswer = function (bot, r) {
-    bot.appendChild(el("span", "mk-badge " + r.status, esc(STATUS[r.status] || "")));
+    var lang = langOf(r.answer), L = labels(lang);
+    var top = el("div", "mk-answer-top");
+    top.appendChild(el("span", "mk-badge " + r.status, esc(L[r.status] || "")));
+    var speak = speakButton(r.answer, lang, L);
+    if (speak) top.appendChild(speak);
+    bot.appendChild(top);
+
     var bubble = el("div", "mk-bubble");
     bot.appendChild(bubble);
     this.reveal(bubble, formatAnswer(r.answer));
-    if (r.sources && r.sources.length) bot.appendChild(sourcesBlock(r.sources));
-    if (r.department) bot.appendChild(this.deptBlock(r.department, r.status !== "answered"));
+    if (r.table) bot.appendChild(tableBlock(r.table));
+    if (r.checklist) bot.appendChild(checklistBlock(r.checklist, L));
+    if (r.sources && r.sources.length) bot.appendChild(sourcesBlock(r.sources, L));
+    if (r.department) bot.appendChild(this.deptBlock(r.department, r.status !== "answered", L));
     this.scroll();
   };
 
   // בשאלה אישית / כשאין תשובה: הכרטיס פתוח. בתשובה רגילה: שורה קטנה שנפתחת בלחיצה
-  Chat.prototype.deptBlock = function (d, open) {
+  Chat.prototype.deptBlock = function (d, open, L) {
     var self = this;
     if (open) return deptCard(d);
-    var mini = el("div", "mk-dept-mini", "צריכים נציג? ");
+    var mini = el("div", "mk-dept-mini", esc((L || LABELS.he).rep));
     var btn = el("button", null, esc(d.name)); btn.type = "button";
     btn.addEventListener("click", function () { mini.replaceWith(deptCard(d)); self.scroll(); });
     mini.appendChild(btn);

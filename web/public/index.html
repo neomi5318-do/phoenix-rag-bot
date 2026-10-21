@@ -90,6 +90,22 @@ section h2 { font-size: clamp(28px, 3.6vw, 40px); margin-bottom: 28px; }
 .promise.feature { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
 .tag { align-self: flex-start; font-size: 12px; font-weight: 600; color: var(--accent); border: 1px solid currentColor; border-radius: 999px; padding: 0 9px; }
 
+/* עוד: שפות, קול, טבלה, רשימה */
+.extras { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.extra { display: flex; gap: 14px; align-items: flex-start; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+.ex-ico { font-size: 26px; line-height: 1; width: 48px; height: 48px; flex: none; border-radius: 14px; display: grid; place-items: center; background: var(--bg); }
+.extra h3 { font-size: 20px; margin-bottom: 4px; }
+.extra p { margin: 0; color: var(--muted); font-size: 15.5px; }
+
+/* לצוות הפניקס */
+.team { display: flex; gap: 24px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  background: var(--ink); color: var(--bg); border-radius: 20px; padding: 32px; }
+.team h2 { margin-bottom: 10px; }
+.team p { margin: 0; max-width: 56ch; opacity: .85; }
+.team .eyebrow { color: color-mix(in srgb, var(--accent) 70%, var(--bg)); }
+.team-btn { flex: none; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; padding: 12px 20px; border-radius: 14px; }
+.team-btn:hover { filter: brightness(1.08); }
+
 /* הטמעה */
 .embed { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 36px; align-items: center; }
 .browser { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 30px 60px -30px rgba(23, 32, 51, .35); }
@@ -137,6 +153,7 @@ footer { border-top: 1px solid var(--line); padding-block: 28px 40px; color: var
   #demo-chat { height: 600px; }
   .sheet { display: none; }
   .promises, .numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .extras { grid-template-columns: 1fr; }
   .embed { grid-template-columns: 1fr; }
   .flow { grid-template-columns: 1fr 1fr; row-gap: 28px; }
   .flow li::after { display: none; }
@@ -162,6 +179,7 @@ footer { border-top: 1px solid var(--line); padding-block: 28px 40px; color: var
       <a href="#promises">מה הוא עושה</a>
       <a href="#embed">הטמעה באתר</a>
       <a href="#how">איך זה עובד</a>
+      <a href="insights.html">לצוות הפניקס</a>
       <a href="https://github.com/neomi5318-do/phoenix-rag-bot" target="_blank" rel="noopener">קוד פתוח ↗</a>
     </nav>
   </header>
@@ -210,6 +228,28 @@ footer { border-top: 1px solid var(--line); padding-block: 28px 40px; color: var
           <h3>מהיר, גם בשעות עומס</h3>
           <p>השרת מתכונן כבר כשהדף נפתח. אם מודל אחד מתעכב, מודל גיבוי עונה במקביל. ולשאלות נפוצות יש תשובות מוכנות ובדוקות.</p>
         </div>
+      </div>
+    </section>
+
+    <section id="more">
+      <div class="eyebrow">ועוד</div>
+      <h2>קרוב יותר לאיך שלקוחות באמת שואלים</h2>
+      <div class="extras">
+        <div class="extra"><span class="ex-ico" aria-hidden="true">🌍</span><div><h3>בכל שפה</h3><p>שואלים ברוסית, בערבית או באנגלית, ומקבלים תשובה באותה שפה. המקור והמשפט המודגש נשארים בעברית, כדי שאפשר יהיה לבדוק.</p></div></div>
+        <div class="extra"><span class="ex-ico" aria-hidden="true">🎤</span><div><h3>בקול</h3><p>לוחצים על המיקרופון ושואלים, ואפשר גם לשמוע את התשובה. נוח במיוחד למבוגרים ולמי שקשה לו להקליד.</p></div></div>
+        <div class="extra"><span class="ex-ico" aria-hidden="true">⚖️</span><div><h3>טבלת השוואה</h3><p>"מה ההבדל בין מקיף לצד ג'?" מקבל טבלה קצרה וברורה, לצד ההסבר.</p></div></div>
+        <div class="extra"><span class="ex-ico" aria-hidden="true">📋</span><div><h3>רשימת "מה להכין"</h3><p>בשאלות על תביעה: רשימת מסמכים עם תיבות סימון, שמסמנים תוך כדי הכנה.</p></div></div>
+      </div>
+    </section>
+
+    <section id="team">
+      <div class="team">
+        <div>
+          <div class="eyebrow">לצוות הפניקס</div>
+          <h2>הבוט גם אומר לכם מה חסר באתר</h2>
+          <p>כל שאלה שלא נמצאה לה תשובה באתר נרשמת, בלי פרטים מזהים, בדוח אחד: אילו נושאים חסרים, ומה בדיוק שאלו. זו רשימת משימות לצוות התוכן, שהלקוחות כתבו בעצמם.</p>
+        </div>
+        <a class="team-btn" href="insights.html">לדוח "מה הלקוחות שואלים" ←</a>
       </div>
     </section>
 

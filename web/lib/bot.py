@@ -139,6 +139,7 @@ def answer(question, history, chunks):
 
     if status == "answered" and PERSONAL.search(question):
         status = "personal"                         # מידע כללי מהאתר + כרטיס המוקד לבדיקה אישית
+        text += "\nזה המידע הכללי שבאתר. מה בדיוק מכוסה בפוליסה האישית שלך, יבדוק המוקד שבכרטיס למטה."
     if status == "answered" and not sources:        # אין מקור -> אין תשובה
         status, text = "not_found", NOT_FOUND
     if status == "not_found":

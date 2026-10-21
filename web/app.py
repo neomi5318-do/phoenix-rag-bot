@@ -5,7 +5,7 @@
 נקודות קצה:
   GET  /api/insights -> הנתונים לדוח "מה הלקוחות שואלים ואין לזה תשובה באתר"
   GET  /api/ask  -> "חימום": טוען את המודל לזיכרון כשהדף נפתח
-  POST /api/ask  -> {"question": "...", "history": [{"q": ..., "a": ...}]}
+  POST /api/ask  -> {"question": "...", "history": [{"q": ..., "a": ..., "urls": [...]}]}
                     1. מחפש באתר את 6 הקטעים הרלוונטיים (lib/retrieval.py)
                     2. מנסח תשובה רק מהם, עם ציטוט מאומת ומוקד מתאים (lib/bot.py)
 
@@ -39,7 +39,9 @@ def clean_history(raw):
     out = []
     for h in (raw or [])[-3:]:
         if isinstance(h, dict) and isinstance(h.get("q"), str) and isinstance(h.get("a"), str):
-            out.append({"q": h["q"][:500], "a": h["a"][:1500]})
+            urls = [u for u in (h.get("urls") or []) if isinstance(u, str)
+                    and u.startswith("https://www.fnx.co.il/")][:3]     # רק עמודים מהאתר
+            out.append({"q": h["q"][:500], "a": h["a"][:1500], "urls": urls})
     return out
 
 
@@ -60,7 +62,7 @@ def ask():
         if not question:
             return jsonify(error="חסרה שאלה"), 400
 
-        chunks = retrieval.search(bot.search_query(question, history))
+        chunks = bot.find_chunks(question, history)
         result = bot.answer(question, history, chunks)
         result["ms"] = int((time.time() - t) * 1000)
         if result.get("model") != "no-match":      # ג'יבריש ("???") הוא לא פער תוכן - לא נרשם בדוח

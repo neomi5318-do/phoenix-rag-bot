@@ -43,6 +43,9 @@ SYSTEM_PROMPT = """את/ה עוזר/ת המידע של אתר חברת הביט�
 3. אין ייעוץ אישי ואין גישה למידע של הלקוח. שאלה על "הפוליסה שלי", "התביעה שלי",
    "האם אני מכוסה", "כמה יעלה לי" = status "personal", גם כשיש באתר מידע כללי בנושא:
    הסבר/י בקצרה מה כתוב באתר באופן כללי (אם יש), ואמר/י שאת המקרה האישי בודק המוקד.
+   בתשובה personal: לא עונים "כן" או "לא" ולא כותבים "הפוליסה שלך מכסה". מתארים מה כתוב באתר
+   באופן כללי, בגוף שלישי ("לפי האתר, ביטוח הדירה מכסה..."), ומסיימים בכך שאת הפוליסה האישית
+   בודקים בשירות הלקוחות. לא מבטיחים שמישהו "ייצור קשר" או "יבדוק" - הלקוח פונה בעצמו.
    אבל: שאלה על *איך עושים* משהו (להגיש תביעה, לשלם, להאריך) היא "answered" ולא "personal",
    גם כשהלקוח מספר על המקרה שלו ("יש לי נזילה בבית, איך מגישים תביעה?").
 4. התאמה למצב של הלקוח: הקטעים יכולים לעסוק בסוגי ביטוח שונים. השתמש/י רק בקטעים
@@ -138,6 +141,15 @@ LANG_NAMES = {"ru": "Russian (русский)", "ar": "Arabic (العربية)",
               "am": "Amharic (አማርኛ)", "fr": "French (français)"}
 
 
+def find_chunks(question, history):
+    """מה מחפשים באתר, כולל שאלות המשך: השאלה (עם הקודמת), ובנוסף - הקטעים הכי מתאימים
+    מהעמוד שממנו ענינו בפעם הקודמת (כמו בתסריט של האתגר: "עונה מתוך אותו עמוד")."""
+    query = search_query(question, history)
+    pages = history[-1].get("urls", []) if history else []
+    own = query[len(history[-1]["q"]) + 1:] if history else query   # השאלה החדשה בלבד
+    return retrieval.search(query, pages=pages, page_question=own)
+
+
 def question_language(text):
     """שפת השאלה לפי האותיות שבה (מספיק טוב לעברית/רוסית/ערבית/אמהרית/אנגלית)."""
     counts = {"he": len(re.findall(r"[\u0590-\u05FF]", text)), "ru": len(re.findall(r"[\u0400-\u04FF]", text)),
@@ -171,6 +183,10 @@ def build_prompt(question, history, chunks):
 # שאלה על המקרה האישי של הלקוח. המודל מתבקש לזהות את זה בעצמו (כלל 3 בפרומפט),
 # והקוד בודק שוב - כי זה כלל שאסור לפספס.
 PERSONAL = re.compile(r"(הפוליסה|התביעה|הביטוח|החשבון|הרכב|הדירה) שלי|אני מכוס|האם אני|כמה יעלה לי|כמה אשלם|במקרה שלי")
+
+
+# הפתיחה לשאלה אישית - כמו בתסריט של האתגר
+PERSONAL_OPENING = "אני יכול להסביר מה כתוב באתר באופן כללי, אבל את המקרה האישי שלך בודקים בשירות הלקוחות (בכרטיס למטה)."
 
 
 def _clean(s):
@@ -297,8 +313,10 @@ def answer(question, history, chunks):
         status = "personal"                         # מידע כללי מהאתר + כרטיס המוקד לבדיקה אישית
     if status == "answered" and not sources:        # אין מקור -> אין תשובה
         status, text = "not_found", NOT_FOUND
-    if status == "personal" and is_hebrew(text) and "מוקד" not in text:
-        text += "\nזה המידע הכללי שבאתר. את המקרה האישי שלך יבדוק המוקד שבכרטיס למטה."
+    if status == "personal" and is_hebrew(text):
+        text = re.sub(r"^(כן|לא)\b[,.!]?\s*", "", text)   # לא עונים "כן/לא" על פוליסה של לקוח
+        if not text.startswith(PERSONAL_OPENING):
+            text = f"{PERSONAL_OPENING}\n{text}"
     if status == "not_found":
         sources = []
         text = text or NOT_FOUND

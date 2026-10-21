@@ -246,7 +246,7 @@
 
   // ---------- הצ'אט ----------
   function Chat(host) {
-    this.history = [];             // [{q, a}] - כדי להבין שאלות המשך
+    this.history = [];             // [{q, a, urls}] - כדי להבין שאלות המשך
     this.busy = false;
     this.root = host;
     host.classList.add("mk", "mk-auto-theme");
@@ -413,7 +413,8 @@
       .then(function (result) {
         wait.stop();
         self.showAnswer(bot, result);
-        self.history.push({ q: question, a: result.answer });
+        self.history.push({ q: question, a: result.answer,     // + העמודים שמהם ענינו - לשאלת המשך
+          urls: (result.sources || []).map(function (s) { return s.url; }) });
       })
       .catch(function (err) {
         wait.stop();

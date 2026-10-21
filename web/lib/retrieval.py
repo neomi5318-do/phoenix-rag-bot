@@ -68,8 +68,23 @@ def chunks_by_ids(ids):
     return [index[i] for i in ids if i in index]
 
 
-def search(query, final_k=FINAL_K):
-    """מחזיר את final_k הקטעים הטובים ביותר לשאלה, מהטוב לפחות טוב."""
+PAGE_K = 2   # בשאלת המשך: כמה קטעים לקחת מהעמוד שממנו ענינו בתשובה הקודמת
+
+
+def from_pages(urls, question):
+    """שאלת המשך ("ותוך כמה זמן מקבלים תשובה?"): מחפשים קודם *בעמוד שממנו ענינו*.
+    מדרגים את הקטעים של אותו עמוד לפי הדמיון לשאלה החדשה בלבד, ולוקחים את PAGE_K הטובים."""
+    load_data()
+    idx = [i for i, c in enumerate(_chunks) if c["url"] in urls]
+    if not idx:
+        return []
+    q = embedder.embed_query(question)
+    return sorted(idx, key=lambda i: -float(_vectors[i] @ q))[:PAGE_K]
+
+
+def search(query, final_k=FINAL_K, pages=None, page_question=""):
+    """מחזיר את final_k הקטעים הטובים ביותר לשאלה, מהטוב לפחות טוב.
+    pages: כתובות העמודים מהתשובה הקודמת (בשאלת המשך) - הקטעים הכי מתאימים מהם נכנסים ראשונים."""
     load_data()
 
     q = embedder.embed_query(query)
@@ -88,8 +103,9 @@ def search(query, final_k=FINAL_K):
     # כפילויות: אותו טקסט בדיוק מופיע לפעמים בכמה עמודים (למשל הסתייגות משפטית של קרנות).
     # שומרים רק את הראשון, כדי שהמודל יקבל 6 קטעים *שונים*. קטעים שרק דומים מאוד
     # לא מוחקים - בדקנו, וברוב המקרים ההבדל הוא בדיוק המספר החשוב (מסלול, דמי ניהול).
+    first = from_pages(pages, page_question) if pages else []
     best, seen = [], set()
-    for i in sorted(fused, key=lambda i: -fused[i]):
+    for i in first + sorted(fused, key=lambda i: -fused[i]):
         key = " ".join(_chunks[i]["text"].split())
         if key in seen:
             continue

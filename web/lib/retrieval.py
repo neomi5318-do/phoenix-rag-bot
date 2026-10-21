@@ -85,5 +85,17 @@ def search(query, final_k=FINAL_K):
     for rank, i in enumerate(kw_rank):
         fused[int(i)] = fused.get(int(i), 0) + 1 / (60 + rank)
 
-    best = sorted(fused, key=lambda i: -fused[i])[:final_k]
-    return [{**_chunks[i], "similarity": float(similarity[i])} for i in best]
+    # כפילויות: אותו טקסט בדיוק מופיע לפעמים בכמה עמודים (למשל הסתייגות משפטית של קרנות).
+    # שומרים רק את הראשון, כדי שהמודל יקבל 6 קטעים *שונים*. קטעים שרק דומים מאוד
+    # לא מוחקים - בדקנו, וברוב המקרים ההבדל הוא בדיוק המספר החשוב (מסלול, דמי ניהול).
+    best, seen = [], set()
+    for i in sorted(fused, key=lambda i: -fused[i]):
+        key = " ".join(_chunks[i]["text"].split())
+        if key in seen:
+            continue
+        seen.add(key)
+        best.append(i)
+        if len(best) == final_k:
+            break
+    return [{**_chunks[i], "similarity": float(similarity[i]), "keyword": float(scores[i])}
+            for i in best]

@@ -10,8 +10,11 @@
 2. אם הוא נכשל (מכסה, עומס) - שולחים מיד לבא בתור.
 3. אם הוא פשוט איטי - אחרי HEDGE_AFTER שניות שולחים *במקביל* גם לבא בתור,
    ולוקחים את התשובה שמגיעה ראשונה.
+4. אם כל המודלים נכשלו - מחכים שנייה ומנסים שוב, ואז 3 שניות (Exponential Backoff).
+   ובכל מקרה עוצרים אחרי TOTAL_BUDGET שניות, ומחזירים הודעה מנומסת.
 כך הלקוחה לא מחכה למודל תקוע, ועדיין מקבלת את Gemini כשהוא זמין.
-מודל שנכשל "נזכר" כחסום לזמן מה, כדי לא לבזבז עליו זמן בשאלה הבאה.
+מודל שנכשל "נזכר" כחסום לזמן מה, כדי לא לבזבז עליו זמן בשאלה הבאה
+(מכסה יומית: 3 שעות, מכסה לדקה (429): דקה, עומס (503): 2 דקות).
 """
 import json
 import os
@@ -23,6 +26,8 @@ import requests
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 HEDGE_AFTER = 5           # שניות - אחרי זה מתחילים במקביל גם את המודל הבא
+TOTAL_BUDGET = 40         # שניות לכל היותר לתשובה (Vercel עוצר פונקציה אחרי 60)
+RETRY_PAUSES = (1, 3)     # המתנה לפני סבב חוזר, כשכל המודלים נכשלו
 
 _pool = ThreadPoolExecutor(max_workers=8)
 _blocked_until = {}       # מודל -> עד מתי לא לנסות אותו
@@ -30,6 +35,13 @@ _blocked_until = {}       # מודל -> עד מתי לא לנסות אותו
 
 class ModelError(Exception):
     pass
+
+
+def _error(r):
+    """שגיאה מסודרת. סימון המכסה היומית מופיע עמוק בגוף התשובה (אצל Gemini - אחרי תו 1,000),
+    לכן בודקים את כל הטקסט *לפני* שמקצרים אותו."""
+    daily = any(w in r.text for w in ("PerDay", "per day", "TPD", "RPD"))
+    return ModelError(f"{r.status_code} {'PerDay ' if daily else ''}{r.text[:300]}")
 
 
 def _gemini(model, system, prompt, schema, timeout=25):
@@ -45,7 +57,7 @@ def _gemini(model, system, prompt, schema, timeout=25):
     r = requests.post(GEMINI_URL.format(model=model), json=body, timeout=timeout,
                       headers={"x-goog-api-key": key})
     if r.status_code != 200:
-        raise ModelError(f"{r.status_code} {r.text[:300]}")
+        raise _error(r)
     parts = r.json()["candidates"][0]["content"]["parts"]
     return "".join(p.get("text", "") for p in parts if not p.get("thought"))
 
@@ -60,7 +72,7 @@ def _groq(model, system, prompt, schema, timeout=25):
     r = requests.post(GROQ_URL, json=body, timeout=timeout,
                       headers={"Authorization": f"Bearer {key}"})
     if r.status_code != 200:
-        raise ModelError(f"{r.status_code} {r.text[:300]}")
+        raise _error(r)
     return r.json()["choices"][0]["message"]["content"]
 
 
@@ -88,10 +100,17 @@ def _block(model, error):
         _blocked_until[model] = time.time() + 120         # עומס / תקלה
 
 
-def generate_json(system, prompt, schema, validate):
-    """מחזיר (תשובה כמילון, שם המודל). validate בודק שהמבנה תקין."""
-    chain = [(m, f) for m, f in CHAIN if _blocked_until.get(m, 0) <= time.time()] or CHAIN
-    running, errors = {}, []
+def _available():
+    """המודלים שאפשר לנסות עכשיו. רשימה *חדשה* בכל פעם - לא נוגעים ב-CHAIN עצמו.
+    אם כולם חסומים: מנסים את 3 המודלים שהחסימה שלהם נגמרת הכי מוקדם."""
+    now = time.time()
+    ready = [(m, f) for m, f in CHAIN if _blocked_until.get(m, 0) <= now]
+    return ready or sorted(CHAIN, key=lambda mf: _blocked_until.get(mf[0], 0))[:3]
+
+
+def _race(chain, system, prompt, schema, validate, deadline, errors):
+    """סבב אחד של "מירוץ מגובה" על רשימת המודלים. מחזיר (תשובה, מודל) או None."""
+    running = {}
 
     def launch():
         model, call = chain.pop(0)
@@ -99,9 +118,15 @@ def generate_json(system, prompt, schema, validate):
 
     launch()
     while running:
-        done, _ = wait(running, timeout=HEDGE_AFTER if chain else None, return_when=FIRST_COMPLETED)
+        left = deadline - time.time()
+        if left <= 0:                    # נגמר הזמן - לא משאירים את הלקוחה לחכות
+            errors.append("timeout")
+            return None
+        done, _ = wait(running, timeout=min(HEDGE_AFTER, left) if chain else left,
+                       return_when=FIRST_COMPLETED)
         if not done:                     # המודל איטי -> מפעילים במקביל את הבא בתור
-            launch()
+            if chain:
+                launch()
             continue
         for future in done:
             model = running.pop(future)
@@ -115,4 +140,23 @@ def generate_json(system, prompt, schema, validate):
                 _block(model, e)
         if not running and chain:        # כולם נכשלו -> הבא בתור
             launch()
+    return None
+
+
+def generate_json(system, prompt, schema, validate):
+    """מחזיר (תשובה כמילון, שם המודל). validate בודק שהמבנה תקין.
+
+    1. סבב ראשון: מירוץ מגובה על כל המודלים הזמינים (מעבר מיידי למודל הבא בשגיאה).
+    2. אם כולם נכשלו (עומס / מכסה לדקה): מחכים 1 שנייה ומנסים שוב, ואז 3 שניות
+       (Exponential Backoff) - עד TOTAL_BUDGET שניות בסך הכול."""
+    deadline = time.time() + TOTAL_BUDGET
+    errors = []
+    for pause in (0,) + RETRY_PAUSES:
+        if pause:
+            if time.time() + pause > deadline - 5:   # אין מספיק זמן לסבב נוסף
+                break
+            time.sleep(pause)
+        result = _race(_available(), system, prompt, schema, validate, deadline, errors)
+        if result:
+            return result
     raise ModelError("כל המודלים נכשלו: " + " | ".join(errors))

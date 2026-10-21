@@ -7,6 +7,11 @@
 - אפשר לעצור ולהמשיך: כל עמוד נכתב מיד לקובץ, ובהרצה הבאה מדלגים על מה שכבר נאסף.
 - קצב מנומס: שנייה בין בקשות, ורק עמודים ציבוריים מתוך ה-sitemap.
 - לכל עמוד נשמר תאריך איסוף, כדי לדעת מתי לרענן.
+- חסימות: על 403 / 429 / 5xx מחכים ומנסים שוב (Exponential Backoff: 5, 15, 45 שניות,
+  ואם השרת שלח Retry-After - מכבדים אותו). עמוד שנחסם לא נרשם כ"נאסף" - ינוסה בהרצה הבאה.
+  לא עוקפים מנגנוני הגנה (WAF/CAPTCHA) של האתר.
+- דפי JS: האתר בנוי ב-Nuxt ורוב העמודים מגיעים מהשרת כ-HTML מלא. עמוד שהתוכן שלו
+  נטען רק בדפדפן (אזור התוכן ריק) מסומן empty=True ומדווח בסוף - כדי שנדע מה חסר.
 
 פלט: data/raw_pages.jsonl - שורה אחת (JSON) לכל עמוד.
 """
@@ -23,6 +28,8 @@ SITEMAP_URL = "https://www.fnx.co.il/sitemap.xml"
 HEADERS = {"User-Agent": "Mozilla/5.0 (phoenix-rag-bot; hackathon project)"}
 OUT_FILE = "data/raw_pages.jsonl"
 DELAY_SECONDS = 1.0  # קצב מנומס
+RETRY_STATUS = {403, 429, 500, 502, 503, 504}   # חסימה / עומס - כדאי לנסות שוב
+BACKOFF = [5, 15, 45]                           # שניות המתנה לפני כל ניסיון חוזר
 
 # אזורים באתר שאינם מיועדים ללקוח, ולכן לא נכנסים לבוט
 EXCLUDE_SECTIONS = {
@@ -76,6 +83,7 @@ def fetch_page(url):
         "section": section_of(url),
         "status": r.status_code,
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "retry_after": r.headers.get("Retry-After"),
     }
     if r.status_code != 200:
         return record
@@ -86,14 +94,37 @@ def fetch_page(url):
     for tag in main(["script", "style", "noscript", "svg"]):
         tag.decompose()
     record["main_html"] = str(main)
+    record["empty"] = len(main.get_text(" ", strip=True)) < 50   # התוכן נטען ב-JS
+    return record
+
+
+def fetch_with_backoff(url):
+    """מוריד עמוד; בחסימה או עומס מחכה ומנסה שוב, בהמתנה שגדלה בכל פעם."""
+    record = None
+    for attempt, pause in enumerate([0] + BACKOFF):
+        if pause:
+            print(f"  ניסיון {attempt + 1}: מחכה {pause} שניות ({url})", flush=True)
+            time.sleep(pause)
+        try:
+            record = fetch_page(url)
+        except requests.RequestException as e:      # תקלת רשת
+            print(f"  תקלת רשת: {e}", flush=True)
+            continue
+        if record["status"] not in RETRY_STATUS:
+            return record
+        retry_after = record.get("retry_after")
+        if retry_after and retry_after.isdigit() and int(retry_after) <= 120:
+            time.sleep(int(retry_after))
     return record
 
 
 def already_done():
+    """עמודים שכבר טופלו: נאספו (200) או לא קיימים באתר (404). עמוד שנחסם - ינוסה שוב."""
     if not os.path.exists(OUT_FILE):
         return set()
     with open(OUT_FILE, encoding="utf-8") as f:
-        return {json.loads(line)["url"] for line in f if line.strip()}
+        records = [json.loads(line) for line in f if line.strip()]
+    return {r["url"] for r in records if r.get("status") in (200, 404, 410)}
 
 
 def main():
@@ -104,17 +135,10 @@ def main():
           f"כבר נאספו: {len(done)} | נותרו: {len(todo)}", flush=True)
 
     os.makedirs("data", exist_ok=True)
-    ok = failed = 0
+    ok = failed = empty = 0
     with open(OUT_FILE, "a", encoding="utf-8") as out:
         for i, url in enumerate(todo, 1):
-            record = None
-            for attempt in range(2):  # ניסיון חוזר אחד על תקלת רשת
-                try:
-                    record = fetch_page(url)
-                    break
-                except requests.RequestException as e:
-                    print(f"  תקלה ({attempt + 1}/2): {url} - {e}", flush=True)
-                    time.sleep(5)
+            record = fetch_with_backoff(url)
             if record is None:
                 failed += 1
                 continue
@@ -122,13 +146,15 @@ def main():
             out.flush()
             if record["status"] == 200:
                 ok += 1
+                empty += record.get("empty", False)
             else:
                 failed += 1
             if i % 25 == 0 or i == len(todo):
                 print(f"[{i}/{len(todo)}] תקינים: {ok} | נכשלו: {failed}", flush=True)
             time.sleep(DELAY_SECONDS)
 
-    print(f"סיום. נאספו בהרצה הזו: {ok} | נכשלו: {failed}", flush=True)
+    print(f"סיום. נאספו בהרצה הזו: {ok} | נכשלו: {failed} | "
+          f"עמודים שהתוכן שלהם נטען ב-JS (ריקים): {empty}", flush=True)
 
 
 if __name__ == "__main__":

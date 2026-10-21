@@ -1,0 +1,415 @@
+/*
+  מקור - ווידג'ט הצ'אט.
+
+  הטמעה בכל אתר בשורה אחת:
+    <script src="https://<הכתובת>/widget.js" data-color="#e8572a" defer></script>
+  -> מופיעה בועת צ'אט בפינה. אפשר גם להציג את הצ'אט בתוך הדף: data-mount="#מזהה".
+
+  מבנה הקובץ:
+    עזרים            - יצירת אלמנטים, עיצוב טקסט, קישור מדגיש, "פתוח עכשיו"
+    Chat             - חלון הצ'אט: שליחת שאלה ל-/api/ask והצגת התשובה
+    שאלות נפוצות     - תשובות שהוכנו ונבדקו מראש (faq.json)
+    הרכבה בדף        - בתוך הדף או כבועה צפה
+*/
+(function () {
+  "use strict";
+
+  var script = document.currentScript;
+  var BASE = script && script.src ? new URL(script.src).origin : location.origin;
+  var opts = (script && script.dataset) || {};
+
+  // טוענים את קובץ העיצוב (אם עוד לא נטען)
+  if (!document.querySelector("link[data-mk-css]")) {
+    var css = document.createElement("link");
+    css.rel = "stylesheet"; css.href = BASE + "/widget.css"; css.setAttribute("data-mk-css", "");
+    document.head.appendChild(css);
+  }
+
+  var ICON = {
+    logo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10.5h8" stroke-width="3.2" opacity=".55"/></svg>',
+    send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>',
+    book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
+    ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>'
+  };
+
+  // הצעות לשאלות בפתיחה - עוברות דרך הבוט האמיתי, כמו שאלה שמקלידים
+  var SUGGESTIONS = [
+    "יש לי נזילה בבית, איך מגישים תביעה?",
+    "מה ההשתתפות העצמית בביטוח לכלב?",
+    "מה ההבדל בין ביטוח מקיף לביטוח צד ג'?"
+  ];
+
+  var STATUS = {
+    answered: "✓ נמצא באתר",
+    not_found: "לא מופיע באתר",
+    personal: "שאלה אישית"
+  };
+
+  // מה כתוב מתחת לאנימציה בזמן שהבוט עובד
+  var THINKING = ["קורא באתר הפניקס…", "מסמן את המשפט הנכון…", "מנסח תשובה ברורה…"];
+
+  // ---------- עזרים ----------
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html != null) e.innerHTML = html;
+    return e;
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  var reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // טקסט פשוט -> פסקאות ורשימות (שורות שמתחילות ב-"- ")
+  function formatAnswer(text) {
+    var out = "", list = false;
+    String(text).split("\n").forEach(function (line) {
+      var t = line.trim();
+      if (!t) return;
+      var item = t.match(/^([-•*]|\d+[.)])\s+(.*)$/);
+      if (item) {
+        if (!list) { out += "<ul>"; list = true; }
+        out += "<li>" + esc(item[2]) + "</li>";
+      } else {
+        if (list) { out += "</ul>"; list = false; }
+        out += "<p>" + esc(t) + "</p>";
+      }
+    });
+    return out + (list ? "</ul>" : "");
+  }
+
+  // הפיצ'ר "הקישור שמדגיש": פותח את העמוד באתר עם המשפט מסומן.
+  // משתמש ב-Text Fragment, תכונה מובנית של הדפדפן: כתובת#:~:text=המשפט
+  function highlightLink(url, quote) {
+    if (!quote) return url;
+    var enc = encodeURIComponent(quote).replace(/-/g, "%2D");
+    return url.split("#")[0] + "#:~:text=" + enc;
+  }
+
+  // הפיצ'ר "המוקד הנכון": האם המוקד פתוח עכשיו, לפי שעון ישראל
+  function openNow(hours) {
+    if (!hours) return null;
+    if (hours.always) return true;
+    var parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Jerusalem", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+    }).formatToParts(new Date());
+    var get = function (t) { return (parts.find(function (p) { return p.type === t; }) || {}).value; };
+    var day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday"));
+    var now = get("hour") + ":" + get("minute");
+    return hours.days.indexOf(day) !== -1 && now >= hours.from && now < hours.to;
+  }
+  function telHref(number) { return "tel:" + number.replace(/[^\d*+]/g, "").replace("*", "%2A"); }
+  function waHref(number) { return "https://wa.me/972" + number.replace(/\D/g, "").replace(/^0/, ""); }
+
+  // כרטיסי המקורות: שם העמוד, המשפט המודגש, וכפתור לפתיחה באתר
+  function sourcesBlock(sources) {
+    var list = el("div", "mk-sources");
+    sources.forEach(function (s) {
+      var card = el("div", "mk-src");
+      card.appendChild(el("div", "mk-src-title", "<span>מקור</span>" + esc(s.title)));
+      if (s.quote) card.appendChild(el("div", "mk-quote", "<mark>" + esc(s.quote) + "</mark>"));
+      var a = el("a", "mk-src-link", (s.quote ? "לראות באתר, מודגש" : "לראות באתר") + ICON.ext);
+      a.href = highlightLink(s.url, s.quote); a.target = "_blank"; a.rel = "noopener";
+      card.appendChild(a);
+      list.appendChild(card);
+    });
+    return list;
+  }
+
+  // כרטיס המוקד: שם, פתוח/סגור עכשיו, שעות, וכפתורי חיוג ווואטסאפ
+  function deptCard(d) {
+    var card = el("div", "mk-dept");
+    var top = el("div", "mk-dept-top");
+    top.appendChild(el("span", "mk-dept-ico", ICON.phone));
+    top.appendChild(el("span", "mk-dept-name", esc(d.name)));
+    var isOpen = openNow(d.hours);
+    if (isOpen !== null) {
+      top.appendChild(el("span", "mk-open " + (isOpen ? "is-open" : "is-closed"),
+        isOpen ? "פתוח עכשיו" : "סגור עכשיו"));
+    }
+    card.appendChild(top);
+    if (d.hours) card.appendChild(el("div", "mk-hours", "שעות פעילות: " + esc(d.hours.text)));
+    var contacts = el("div", "mk-contacts");
+    (d.phones || []).forEach(function (p) {
+      var wa = p.label === "וואטסאפ";
+      var a = el("a", "mk-contact" + (wa ? " is-wa" : ""));
+      a.href = wa ? waHref(p.number) : telHref(p.number);
+      if (wa) { a.target = "_blank"; a.rel = "noopener"; }
+      a.innerHTML = "<small>" + esc(p.label) + "</small><bdi>" + esc(p.number) + "</bdi>";
+      contacts.appendChild(a);
+    });
+    card.appendChild(contacts);
+    return card;
+  }
+
+  // ---------- הצ'אט ----------
+  function Chat(host) {
+    this.history = [];             // [{q, a}] - כדי להבין שאלות המשך
+    this.busy = false;
+    this.root = host;
+    host.classList.add("mk", "mk-auto-theme");
+    if (opts.color) host.style.setProperty("--mk-accent", opts.color);
+    this.render();
+    this.warmUp();
+  }
+
+  Chat.prototype.render = function () {
+    var self = this;
+    var panel = el("div", "mk-panel");
+    panel.innerHTML =
+      '<div class="mk-head">' +
+      '  <div class="mk-logo" aria-hidden="true">' + ICON.logo + "</div>" +
+      '  <div class="mk-title"><b>מקור</b>' +
+      '    <span class="mk-status" data-state="warming" role="status"><span class="mk-dot"></span><span class="mk-status-text">מתחבר…</span></span></div>' +
+      '  <div class="mk-head-actions">' +
+      '    <button class="mk-faq-btn" type="button" aria-pressed="false">' + ICON.book + "<span>שאלות נפוצות</span></button>" +
+      '    <button class="mk-icon-btn mk-reset" type="button" aria-label="שיחה חדשה" title="שיחה חדשה">' + ICON.reset + "</button>" +
+      '    <button class="mk-icon-btn mk-close" type="button" aria-label="סגירה" title="סגירה" hidden>' + ICON.close + "</button>" +
+      "  </div>" +
+      "</div>" +
+      '<div class="mk-body">' +
+      '  <div class="mk-log" aria-live="polite"></div>' +
+      '  <div class="mk-faq" hidden></div>' +
+      "</div>" +
+      '<form class="mk-form">' +
+      '  <div class="mk-row">' +
+      '    <textarea class="mk-input" aria-label="השאלה שלך" rows="1" placeholder="מה תרצו לדעת?"></textarea>' +
+      '    <button class="mk-send" type="submit" aria-label="שליחה">' + ICON.send + "</button>" +
+      "  </div>" +
+      '  <div class="mk-note">עונה רק ממידע ציבורי באתר הפניקס · אין לשתף פרטים אישיים</div>' +
+      "</form>";
+    this.root.appendChild(panel);
+
+    this.log = panel.querySelector(".mk-log");
+    this.faq = panel.querySelector(".mk-faq");
+    this.faqBtn = panel.querySelector(".mk-faq-btn");
+    this.input = panel.querySelector(".mk-input");
+    this.sendBtn = panel.querySelector(".mk-send");
+    this.statusEl = panel.querySelector(".mk-status");
+    this.closeBtn = panel.querySelector(".mk-close");
+
+    panel.querySelector(".mk-form").addEventListener("submit", function (e) {
+      e.preventDefault(); self.ask(self.input.value);
+    });
+    this.input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); self.ask(self.input.value); }
+    });
+    this.input.addEventListener("input", function () {
+      self.input.style.height = "auto";
+      self.input.style.height = Math.min(self.input.scrollHeight, 120) + "px";
+    });
+    panel.querySelector(".mk-reset").addEventListener("click", function () { self.reset(); });
+    this.faqBtn.addEventListener("click", function () { self.toggleFaq(); });
+    this.welcome();
+  };
+
+  Chat.prototype.welcome = function () {
+    var self = this;
+    var box = el("div", "mk-msg mk-bot");
+    box.appendChild(el("div", "mk-bubble",
+      "<p><b>שלום!</b> אני עונה רק ממה שכתוב באתר הפניקס, ומראה לכם בדיוק איפה זה כתוב.</p>"));
+    var chips = el("div", "mk-suggest");
+    SUGGESTIONS.forEach(function (q) {
+      var b = el("button", "mk-chip", esc(q)); b.type = "button";
+      b.addEventListener("click", function () { self.ask(q); });
+      chips.appendChild(b);
+    });
+    box.appendChild(chips);
+    this.log.appendChild(box);
+  };
+
+  Chat.prototype.reset = function () {
+    this.history = []; this.log.innerHTML = ""; this.welcome();
+    this.toggleFaq(false); this.input.focus();
+  };
+
+  Chat.prototype.setStatus = function (state, text) {
+    this.statusEl.dataset.state = state;
+    this.statusEl.querySelector(".mk-status-text").textContent = text;
+  };
+
+  // "חימום": השרת טוען את המודל כבר כשהדף נפתח, כדי שהשאלה הראשונה תהיה מהירה
+  Chat.prototype.warmUp = function () {
+    var self = this;
+    fetch(BASE + "/api/ask", { method: "GET" })
+      .then(function (r) { if (!r.ok) throw 0; self.setStatus("ready", "מוכן לשאלות"); })
+      .catch(function () { self.setStatus("ready", "מוכן לשאלות"); });
+  };
+
+  Chat.prototype.scroll = function () { this.log.scrollTop = this.log.scrollHeight; };
+
+  // אנימציית "מרקר" בזמן שהבוט עובד
+  Chat.prototype.thinking = function () {
+    var box = el("div", "mk-thinking");
+    box.innerHTML =
+      '<div class="mk-lines" aria-hidden="true"><i></i><i></i><i></i></div>' +
+      '<div class="mk-thinking-text">' + THINKING[0] + "</div>";
+    var text = box.querySelector(".mk-thinking-text"), i = 0;
+    var timer = setInterval(function () {
+      i = Math.min(i + 1, THINKING.length - 1);
+      text.textContent = THINKING[i];
+    }, 1800);
+    box.stop = function () { clearInterval(timer); box.remove(); };
+    return box;
+  };
+
+  Chat.prototype.ask = function (raw) {
+    var self = this;
+    var question = (raw || "").trim();
+    if (!question || this.busy) return;
+    this.toggleFaq(false);
+    this.busy = true; this.sendBtn.disabled = true;
+    this.input.value = ""; this.input.style.height = "auto";
+
+    var user = el("div", "mk-msg mk-user"); user.textContent = question;
+    this.log.appendChild(user);
+    var bot = el("div", "mk-msg mk-bot");
+    var wait = this.thinking();
+    bot.appendChild(wait);
+    this.log.appendChild(bot);
+    this.scroll();
+
+    fetch(BASE + "/api/ask", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: question, history: this.history.slice(-3) })
+    })
+      .then(function (r) {
+        return r.json().then(function (data) {
+          if (!r.ok) throw new Error(data.error || "תקלה זמנית");
+          return data;
+        });
+      })
+      .then(function (result) {
+        wait.stop();
+        self.showAnswer(bot, result);
+        self.history.push({ q: question, a: result.answer });
+      })
+      .catch(function (err) {
+        wait.stop();
+        var e = el("div", "mk-bubble");
+        e.appendChild(el("p", "mk-error", esc(err.message || "תקלה זמנית. נסו שוב.")));
+        var retry = el("button", "mk-retry", "לנסות שוב"); retry.type = "button";
+        retry.addEventListener("click", function () { bot.remove(); user.remove(); self.ask(question); });
+        e.appendChild(retry);
+        bot.appendChild(e);
+      })
+      .then(function () {
+        self.busy = false; self.sendBtn.disabled = false; self.scroll();
+      });
+  };
+
+  Chat.prototype.showAnswer = function (bot, r) {
+    bot.appendChild(el("span", "mk-badge " + r.status, esc(STATUS[r.status] || "")));
+    var bubble = el("div", "mk-bubble");
+    bot.appendChild(bubble);
+    this.reveal(bubble, formatAnswer(r.answer));
+    if (r.sources && r.sources.length) bot.appendChild(sourcesBlock(r.sources));
+    if (r.department) bot.appendChild(this.deptBlock(r.department, r.status !== "answered"));
+    this.scroll();
+  };
+
+  // בשאלה אישית / כשאין תשובה: הכרטיס פתוח. בתשובה רגילה: שורה קטנה שנפתחת בלחיצה
+  Chat.prototype.deptBlock = function (d, open) {
+    var self = this;
+    if (open) return deptCard(d);
+    var mini = el("div", "mk-dept-mini", "צריכים נציג? ");
+    var btn = el("button", null, esc(d.name)); btn.type = "button";
+    btn.addEventListener("click", function () { mini.replaceWith(deptCard(d)); self.scroll(); });
+    mini.appendChild(btn);
+    return mini;
+  };
+
+  // חשיפה הדרגתית של התשובה (מכבדים "הפחתת תנועה")
+  Chat.prototype.reveal = function (bubble, html) {
+    bubble.innerHTML = html;
+    if (reduceMotion) return;
+    Array.prototype.forEach.call(bubble.querySelectorAll("p, li"), function (n, i) {
+      n.style.opacity = "0"; n.style.transition = "opacity .35s ease";
+      setTimeout(function () { n.style.opacity = "1"; }, 80 + i * 130);
+    });
+  };
+
+  // ---------- שאלות נפוצות: תשובות שהוכנו ונבדקו מראש ----------
+  Chat.prototype.toggleFaq = function (show) {
+    var open = show === undefined ? this.faq.hidden : show;
+    this.faq.hidden = !open;
+    this.log.hidden = open;
+    this.faqBtn.setAttribute("aria-pressed", String(open));
+    if (open && !this.faqLoaded) this.loadFaq();
+  };
+
+  Chat.prototype.loadFaq = function () {
+    var self = this;
+    this.faqLoaded = true;
+    this.faq.innerHTML = '<p class="mk-faq-loading">טוען…</p>';
+    fetch(BASE + "/faq.json")
+      .then(function (r) { return r.json(); })
+      .then(function (data) { self.renderFaq(data); })
+      .catch(function () {
+        self.faqLoaded = false;
+        self.faq.innerHTML = '<p class="mk-error">לא הצלחתי לטעון את השאלות הנפוצות.</p>';
+      });
+  };
+
+  Chat.prototype.renderFaq = function (data) {
+    var self = this;
+    this.faq.innerHTML = "";
+    var head = el("div", "mk-faq-head");
+    head.appendChild(el("b", null, "שאלות נפוצות"));
+    var back = el("button", "mk-back", ICON.back + "<span>חזרה לשיחה</span>"); back.type = "button";
+    back.addEventListener("click", function () { self.toggleFaq(false); self.input.focus(); });
+    head.appendChild(back);
+    this.faq.appendChild(head);
+    this.faq.appendChild(el("p", "mk-faq-intro",
+      "התשובות הוכנו מראש מתוך האתר ונבדקו, עם המקור והמשפט המודגש."));
+
+    data.topics.forEach(function (topic) {
+      self.faq.appendChild(el("div", "mk-faq-topic", esc(topic.name)));
+      topic.items.forEach(function (item) {
+        var d = el("details", "mk-faq-item");
+        d.appendChild(el("summary", null, esc(item.question)));
+        var body = el("div", "mk-faq-body");
+        body.appendChild(el("div", "mk-bubble", formatAnswer(item.answer)));
+        if (item.sources && item.sources.length) body.appendChild(sourcesBlock(item.sources));
+        d.appendChild(body);
+        self.faq.appendChild(d);
+      });
+    });
+  };
+
+  // ---------- הרכבה בדף ----------
+  function mountFloating() {
+    var launcher = el("button", "mk mk-launcher", ICON.logo);
+    launcher.type = "button"; launcher.setAttribute("aria-label", "פתיחת עוזר המידע");
+    if (opts.color) launcher.style.setProperty("--mk-accent", opts.color);
+    var box = el("div", "mk-float"); box.hidden = true;
+    document.body.appendChild(launcher); document.body.appendChild(box);
+    var chat = null;
+    function toggle(show) {
+      box.hidden = !show;
+      launcher.setAttribute("aria-expanded", String(show));
+      if (show && !chat) {
+        chat = new Chat(box);
+        chat.closeBtn.hidden = false;
+        chat.closeBtn.addEventListener("click", function () { toggle(false); launcher.focus(); });
+      }
+      if (show) chat.input.focus();
+    }
+    launcher.addEventListener("click", function () { toggle(box.hidden); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !box.hidden) toggle(false); });
+    return { open: function () { toggle(true); } };
+  }
+
+  function start() {
+    var target = opts.mount && document.querySelector(opts.mount);
+    window.Makor = target ? { chat: new Chat(target) } : mountFloating();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
+})();

@@ -1,0 +1,287 @@
+/*
+  מקור - עיצוב ווידג'ט הצ'אט.
+  כל המחלקות מתחילות ב-mk- וכל הצבעים הם משתנים (--mk-...), כדי שהווידג'ט
+  לא יתנגש בעיצוב של האתר שמטמיע אותו, ושאפשר לשנות צבע מותג בשורה אחת.
+*/
+/* גופנים מקומיים (רישיון SIL OFL, ראו fonts/) - בלי תלות ב-Google Fonts */
+@font-face { font-family: "Rubik"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/rubik-hebrew-400-normal.woff2") format("woff2"); unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Rubik"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/rubik-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Rubik"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/rubik-hebrew-500-normal.woff2") format("woff2"); unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Rubik"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/rubik-latin-500-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Rubik"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/rubik-hebrew-600-normal.woff2") format("woff2"); unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Rubik"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/rubik-latin-600-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Rubik"; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/rubik-hebrew-700-normal.woff2") format("woff2"); unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Rubik"; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/rubik-latin-700-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Suez One"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/suez-one-hebrew-400-normal.woff2") format("woff2"); unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: "Suez One"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/suez-one-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+.mk {
+  --mk-accent: #e8572a;          /* צבע המותג - ניתן לשינוי עם data-color */
+  --mk-accent-ink: #ffffff;
+  --mk-ink: #172033;
+  --mk-muted: #5f6b7d;
+  --mk-line: #e3e7ee;
+  --mk-bg: #ffffff;
+  --mk-soft: #f3f5f9;
+  --mk-user: #172033;
+  --mk-user-ink: #ffffff;
+  --mk-mark: #ffe066;            /* צבע ה"מרקר" */
+  --mk-ok: #0f7b62;  --mk-ok-bg: #e2f4ee;
+  --mk-nf: #5a6378;  --mk-nf-bg: #eceff5;
+  --mk-pe: #8a5300;  --mk-pe-bg: #fdf0d6;
+  --mk-open: #0f7b62; --mk-closed: #b23b2e; --mk-wa: #128c4a;
+  --mk-font: "Rubik", "Assistant", system-ui, "Segoe UI", Arial, sans-serif;
+  --mk-radius: 20px;
+  --mk-shadow: 0 28px 70px -24px rgba(23, 32, 51, .38), 0 2px 10px rgba(23, 32, 51, .07);
+
+  font-family: var(--mk-font);
+  color: var(--mk-ink);
+  direction: rtl;
+  font-size: 15px;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+.mk *, .mk *::before, .mk *::after { box-sizing: inherit; }
+.mk [hidden] { display: none !important; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mk.mk-auto-theme {
+    --mk-ink: #e9edf5; --mk-muted: #a3adbf; --mk-line: #2c3446; --mk-bg: #151b28; --mk-soft: #1e2534;
+    --mk-user: #e9edf5; --mk-user-ink: #151b28; --mk-mark: #7a6514;
+    --mk-ok: #6fd3b5; --mk-ok-bg: #133229; --mk-nf: #b7bfd1; --mk-nf-bg: #252d3e;
+    --mk-pe: #f3c46b; --mk-pe-bg: #3a2c12; --mk-open: #6fd3b5; --mk-closed: #ff8f80; --mk-wa: #5fd394;
+  }
+}
+:root[data-theme="dark"] .mk.mk-auto-theme {
+  --mk-ink: #e9edf5; --mk-muted: #a3adbf; --mk-line: #2c3446; --mk-bg: #151b28; --mk-soft: #1e2534;
+  --mk-user: #e9edf5; --mk-user-ink: #151b28; --mk-mark: #7a6514;
+  --mk-ok: #6fd3b5; --mk-ok-bg: #133229; --mk-nf: #b7bfd1; --mk-nf-bg: #252d3e;
+  --mk-pe: #f3c46b; --mk-pe-bg: #3a2c12; --mk-open: #6fd3b5; --mk-closed: #ff8f80; --mk-wa: #5fd394;
+}
+
+/* ---------- חלון הצ'אט ---------- */
+.mk-panel {
+  display: flex; flex-direction: column; height: 100%; min-height: 0;
+  background: var(--mk-bg); border: 1px solid var(--mk-line);
+  border-radius: var(--mk-radius); box-shadow: var(--mk-shadow); overflow: hidden;
+}
+.mk-head {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  border-bottom: 1px solid var(--mk-line);
+}
+.mk-logo {
+  width: 40px; height: 40px; flex: none; border-radius: 13px;
+  background: var(--mk-accent); color: var(--mk-accent-ink); display: grid; place-items: center;
+}
+.mk-logo svg { width: 22px; height: 22px; }
+.mk-title { display: flex; flex-direction: column; min-width: 0; }
+.mk-title b { font-size: 17px; line-height: 1.2; }
+.mk-status { font-size: 12.5px; color: var(--mk-muted); display: flex; align-items: center; gap: 6px; }
+.mk-dot { width: 7px; height: 7px; border-radius: 50%; background: #c2c8d3; }
+.mk-status[data-state="ready"] .mk-dot { background: var(--mk-open); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mk-open) 20%, transparent); }
+.mk-status[data-state="warming"] .mk-dot { background: #e0b100; animation: mk-pulse .9s infinite alternate; }
+.mk-head-actions { margin-inline-start: auto; display: flex; align-items: center; gap: 2px; }
+.mk-faq-btn {
+  display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--mk-ink); background: var(--mk-soft); border: 1px solid transparent; border-radius: 999px;
+  padding: 6px 12px; cursor: pointer; white-space: nowrap;
+}
+.mk-faq-btn svg { width: 16px; height: 16px; }
+.mk-faq-btn:hover { border-color: var(--mk-line); }
+.mk-faq-btn[aria-pressed="true"] { background: var(--mk-ink); color: var(--mk-bg); }
+.mk-icon-btn {
+  border: 0; background: transparent; color: var(--mk-muted); cursor: pointer;
+  width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+}
+.mk-icon-btn:hover { background: var(--mk-soft); color: var(--mk-ink); }
+.mk-icon-btn svg { width: 18px; height: 18px; }
+
+.mk-body { position: relative; flex: 1; min-height: 0; display: flex; }
+
+/* ---------- ההודעות ---------- */
+.mk-log, .mk-faq {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: 18px 16px 10px; display: flex; flex-direction: column; gap: 14px;
+}
+.mk-msg { max-width: 92%; animation: mk-in .3s ease-out both; }
+.mk-msg p { margin: 0; }
+.mk-msg p + p { margin-top: 6px; }
+.mk-user {
+  align-self: flex-start; background: var(--mk-user); color: var(--mk-user-ink);
+  padding: 9px 14px; border-radius: 18px 18px 18px 5px;
+}
+.mk-bot { align-self: stretch; max-width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.mk-bubble { background: var(--mk-soft); border-radius: 5px 18px 18px 18px; padding: 12px 14px; }
+.mk-bubble ul { margin: 4px 0 0; padding-inline-start: 18px; }
+.mk-bubble li { margin: 3px 0; }
+
+.mk-badge {
+  align-self: flex-start; font-size: 12.5px; font-weight: 600;
+  padding: 2px 10px; border-radius: 999px;
+}
+.mk-badge.answered { color: var(--mk-ok); background: var(--mk-ok-bg); }
+.mk-badge.not_found { color: var(--mk-nf); background: var(--mk-nf-bg); }
+.mk-badge.personal { color: var(--mk-pe); background: var(--mk-pe-bg); }
+
+/* ---------- אנימציית "מרקר" בזמן חיפוש ---------- */
+.mk-thinking {
+  background: var(--mk-soft); border-radius: 5px 18px 18px 18px; padding: 14px 16px 12px;
+  display: flex; flex-direction: column; gap: 10px; width: min(300px, 100%);
+}
+.mk-lines { display: flex; flex-direction: column; gap: 9px; }
+.mk-lines i {
+  position: relative; display: block; height: 9px; border-radius: 5px;
+  background: color-mix(in srgb, var(--mk-muted) 22%, transparent); overflow: hidden;
+}
+.mk-lines i:nth-child(1) { width: 92%; } .mk-lines i:nth-child(2) { width: 74%; } .mk-lines i:nth-child(3) { width: 84%; }
+.mk-lines i::after {           /* המרקר הצהוב שעובר על השורה */
+  content: ""; position: absolute; top: -2px; bottom: -2px; right: 0; width: 0;
+  background: var(--mk-mark); border-radius: 4px; opacity: .95;
+  animation: mk-mark 2.7s ease-in-out infinite;
+}
+.mk-lines i:nth-child(2)::after { animation-delay: .9s; }
+.mk-lines i:nth-child(3)::after { animation-delay: 1.8s; }
+.mk-thinking-text { font-size: 13.5px; color: var(--mk-muted); }
+
+/* ---------- מקורות + ציטוט מודגש ---------- */
+.mk-sources { display: flex; flex-direction: column; gap: 8px; }
+.mk-src {
+  border: 1px solid var(--mk-line); border-radius: 14px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px; background: var(--mk-bg);
+}
+.mk-src-title { font-size: 13px; font-weight: 600; display: flex; gap: 8px; align-items: baseline; }
+.mk-src-title span {
+  flex: none; font-size: 11px; font-weight: 600; color: var(--mk-muted);
+  border: 1px solid var(--mk-line); border-radius: 6px; padding: 0 6px;
+}
+.mk-quote { font-size: 14px; line-height: 1.7; }
+.mk-quote mark {
+  background: linear-gradient(transparent 30%, var(--mk-mark) 30%, var(--mk-mark) 90%, transparent 90%);
+  color: inherit; padding: 0 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+}
+.mk-src-link {
+  align-self: flex-start; font-size: 13px; font-weight: 600; color: var(--mk-accent);
+  text-decoration: none; display: inline-flex; gap: 5px; align-items: center;
+}
+.mk-src-link svg { width: 14px; height: 14px; }
+.mk-src-link:hover { text-decoration: underline; }
+
+/* ---------- כרטיס המוקד ---------- */
+.mk-dept {
+  border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+  background: var(--mk-bg); border: 1px solid var(--mk-line);
+  box-shadow: inset 0 3px 0 var(--mk-accent);
+}
+.mk-dept-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mk-dept-ico { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--mk-soft); color: var(--mk-accent); }
+.mk-dept-ico svg { width: 15px; height: 15px; }
+.mk-dept-name { font-weight: 600; font-size: 14px; }
+.mk-open { font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
+.mk-open::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.mk-open.is-open { color: var(--mk-open); background: color-mix(in srgb, var(--mk-open) 12%, transparent); }
+.mk-open.is-closed { color: var(--mk-closed); background: color-mix(in srgb, var(--mk-closed) 10%, transparent); }
+.mk-hours { font-size: 12.5px; color: var(--mk-muted); }
+.mk-contacts { display: flex; flex-wrap: wrap; gap: 6px; }
+.mk-contact {
+  display: inline-flex; align-items: baseline; gap: 6px; font-size: 14px; font-weight: 600;
+  padding: 6px 12px; border-radius: 10px; background: var(--mk-soft); color: var(--mk-ink); text-decoration: none;
+}
+.mk-contact small { font-weight: 500; font-size: 12px; color: var(--mk-muted); }
+.mk-contact bdi { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+.mk-contact.is-wa bdi { color: var(--mk-wa); }
+.mk-contact:hover { background: var(--mk-line); }
+.mk-dept-mini { font-size: 13px; color: var(--mk-muted); }
+.mk-dept-mini button { font: inherit; color: var(--mk-accent); background: none; border: 0; padding: 0; cursor: pointer; font-weight: 600; }
+
+/* ---------- הצעות ---------- */
+.mk-suggest { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.mk-chip {
+  font: inherit; font-size: 14px; cursor: pointer; text-align: start;
+  padding: 8px 14px; border-radius: 14px; border: 1px solid var(--mk-line);
+  background: var(--mk-bg); color: var(--mk-ink); transition: border-color .15s, transform .15s;
+}
+.mk-chip:hover { border-color: var(--mk-accent); transform: translateX(-2px); }
+.mk-error { color: var(--mk-closed); font-size: 14px; }
+.mk-retry { font: inherit; font-size: 13px; margin-top: 6px; border: 1px solid var(--mk-line); background: var(--mk-bg); border-radius: 8px; padding: 3px 10px; cursor: pointer; color: var(--mk-ink); }
+
+/* ---------- שאלות נפוצות ---------- */
+.mk-faq { gap: 8px; }
+.mk-faq-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mk-faq-head b { font-size: 17px; }
+.mk-back { display: inline-flex; align-items: center; gap: 4px; font: inherit; font-size: 13px; font-weight: 600; color: var(--mk-accent); background: none; border: 0; cursor: pointer; }
+.mk-back svg { width: 16px; height: 16px; }
+.mk-faq-intro { margin: 0 0 4px; font-size: 13px; color: var(--mk-muted); }
+.mk-faq-topic { font-size: 12px; font-weight: 600; color: var(--mk-muted); letter-spacing: .02em; margin-top: 8px; }
+.mk-faq-item { border: 1px solid var(--mk-line); border-radius: 14px; background: var(--mk-bg); }
+.mk-faq-item summary {
+  list-style: none; cursor: pointer; padding: 11px 14px; font-weight: 600; font-size: 14.5px;
+  display: flex; justify-content: space-between; gap: 10px; align-items: center;
+}
+.mk-faq-item summary::-webkit-details-marker { display: none; }
+.mk-faq-item summary::after { content: "+"; font-size: 20px; line-height: 1; color: var(--mk-muted); transition: transform .2s; }
+.mk-faq-item[open] summary::after { transform: rotate(45deg); }
+.mk-faq-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.mk-faq-loading { color: var(--mk-muted); }
+
+/* ---------- שורת הכתיבה ---------- */
+.mk-form { border-top: 1px solid var(--mk-line); padding: 10px 12px 8px; display: flex; flex-direction: column; gap: 6px; }
+.mk-row { display: flex; gap: 8px; align-items: flex-end; }
+.mk-input {
+  flex: 1; min-width: 0; resize: none; font: inherit; color: var(--mk-ink);
+  background: var(--mk-soft); border: 1px solid transparent; border-radius: 14px;
+  padding: 10px 14px; max-height: 120px; outline: none;
+}
+.mk-input::placeholder { color: var(--mk-muted); }
+.mk-input:focus { border-color: var(--mk-accent); background: var(--mk-bg); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--mk-accent) 18%, transparent); }
+.mk-send {
+  flex: none; width: 44px; height: 44px; border-radius: 14px; border: 0; cursor: pointer;
+  background: var(--mk-accent); color: var(--mk-accent-ink); display: grid; place-items: center;
+  transition: transform .15s;
+}
+.mk-send:hover:not(:disabled) { transform: scale(1.05); }
+.mk-send:disabled { opacity: .45; cursor: default; }
+.mk-send svg { width: 20px; height: 20px; transform: scaleX(-1); }
+.mk-note { font-size: 11.5px; color: var(--mk-muted); text-align: center; }
+
+.mk button:focus-visible, .mk a:focus-visible, .mk summary:focus-visible,
+.mk-launcher:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--mk-accent) 55%, transparent); outline-offset: 2px;
+}
+
+/* ---------- מצב "צף" (כמו באתר אמיתי) ---------- */
+.mk-launcher {
+  position: fixed; z-index: 2147483000;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  left: calc(20px + env(safe-area-inset-left, 0px));
+  width: 62px; height: 62px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--mk-accent); color: var(--mk-accent-ink); box-shadow: var(--mk-shadow);
+  display: grid; place-items: center; transition: transform .2s;
+}
+.mk-launcher:hover { transform: scale(1.06); }
+.mk-launcher svg { width: 28px; height: 28px; }
+.mk-float {
+  position: fixed; z-index: 2147483001;
+  bottom: calc(94px + env(safe-area-inset-bottom, 0px));
+  left: calc(20px + env(safe-area-inset-left, 0px));
+  width: min(410px, calc(100vw - 40px)); height: min(660px, calc(100vh - 120px));
+  transform-origin: bottom left; animation: mk-pop .22s ease-out both;
+}
+@media (max-width: 520px) {
+  .mk-float { inset: 0; width: auto; height: auto; }
+  .mk-float .mk-panel { border-radius: 0; border: 0;
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
+
+@keyframes mk-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes mk-pop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes mk-pulse { to { opacity: .35; } }
+@keyframes mk-mark {
+  0% { width: 0; opacity: .95; }
+  45% { width: 100%; opacity: .95; }
+  75% { width: 100%; opacity: 0; }
+  100% { width: 100%; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk *, .mk-float { animation: none !important; transition: none !important; }
+  .mk-lines i::after { width: 60%; }
+}

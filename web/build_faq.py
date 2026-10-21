@@ -7,6 +7,7 @@
 import json
 import os
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -41,6 +42,7 @@ def main():
             if q in done:
                 items.append(done[q])
                 continue
+            time.sleep(8)                      # קצב מתון (מכסות לדקה)
             r = bot.answer(q, [], retrieval.search(q))
             print(f"[{r['status']}] {r['model']} {q}\n{r['answer']}\n", flush=True)
             if r["status"] == "answered":

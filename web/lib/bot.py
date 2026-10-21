@@ -93,6 +93,11 @@ def build_prompt(question, history, chunks):
     return "קטעים מאתר הפניקס:\n\n" + "\n\n".join(parts) + f"\n\n{convo}שאלת הלקוח: {question}"
 
 
+# שאלה על המקרה האישי של הלקוח. המודל מתבקש לזהות את זה בעצמו (כלל 3 בפרומפט),
+# והקוד בודק שוב - כי זה כלל שאסור לפספס.
+PERSONAL = re.compile(r"(הפוליסה|התביעה|הביטוח|החשבון|הרכב|הדירה) שלי|אני מכוס|האם אני|כמה יעלה לי|כמה אשלם|במקרה שלי")
+
+
 def _clean(s):
     return re.sub(r"\s+", " ", s or "").strip(" \"'״„“”.")
 
@@ -132,6 +137,8 @@ def answer(question, history, chunks):
         seen.add(c["url"])
         sources.append({"url": c["url"], "title": c["title"], "quote": quote})
 
+    if status == "answered" and PERSONAL.search(question):
+        status = "personal"                         # מידע כללי מהאתר + כרטיס המוקד לבדיקה אישית
     if status == "answered" and not sources:        # אין מקור -> אין תשובה
         status, text = "not_found", NOT_FOUND
     if status == "not_found":

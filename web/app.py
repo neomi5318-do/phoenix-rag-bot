@@ -22,6 +22,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = os.path.join(HERE, "public")
 
 app = Flask(__name__, static_folder=None)
+VERSION = os.getenv("VERCEL_GIT_COMMIT_SHA", "local")[:7]   # כדי לבדוק איזו גרסה רצה
 
 
 @app.after_request
@@ -50,7 +51,7 @@ def ask():
 
     if request.method == "GET":                      # חימום
         retrieval.load_data()
-        return jsonify(ready=True, ms=int((time.time() - t) * 1000))
+        return jsonify(ready=True, version=VERSION, ms=int((time.time() - t) * 1000))
 
     try:
         body = request.get_json(silent=True) or {}
@@ -62,7 +63,8 @@ def ask():
         chunks = retrieval.search(bot.search_query(question, history))
         result = bot.answer(question, history, chunks)
         result["ms"] = int((time.time() - t) * 1000)
-        insights.record(question, result, chunks[0]["section"] if chunks else "")  # לדוח "פערי תוכן"
+        if result.get("model") != "no-match":      # ג'יבריש ("???") הוא לא פער תוכן - לא נרשם בדוח
+            insights.record(question, result, chunks[0]["section"] if chunks else "")
         return jsonify(result)
     except Exception as e:  # noqa: BLE001
         print("ask error:", repr(e))

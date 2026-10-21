@@ -62,7 +62,7 @@ def ask():
         chunks = retrieval.search(bot.search_query(question, history))
         result = bot.answer(question, history, chunks)
         result["ms"] = int((time.time() - t) * 1000)
-        insights.record(question, result)            # לדוח "פערי תוכן" (בלי פרטים מזהים)
+        insights.record(question, result, chunks[0]["section"] if chunks else "")  # לדוח "פערי תוכן"
         return jsonify(result)
     except Exception as e:  # noqa: BLE001
         print("ask error:", repr(e))

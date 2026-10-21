@@ -3,7 +3,8 @@
 
 מה נשמר (במסד Upstash Redis, שמחובר ל-Vercel):
 - מונים: כמה שאלות נשאלו, וכמה מכל סטטוס (נמצא / לא נמצא / אישי).
-- לכל שאלה *שלא נמצאה לה תשובה*: נוסח השאלה (אחרי מחיקת מספרים ומיילים), הנושא, ותאריך.
+- לכל שאלה *שלא נמצאה לה תשובה*: נוסח השאלה (אחרי מחיקת מספרים ומיילים), הנושא
+  (האזור באתר שהכי קרוב לשאלה), ותאריך.
 לא נשמרים: שם, כתובת IP, או כל פרט מזהה. מספרים ארוכים ומיילים מוחלפים ב-•••.
 
 אם המסד לא מחובר - הבוט ממשיך לעבוד רגיל, פשוט בלי דוח.
@@ -39,19 +40,29 @@ def _redis(*commands):
     return [x.get("result") for x in r.json()]
 
 
+# הנושא של שאלה שלא נענתה = האזור באתר שהכי קרוב אליה (לפי הקטע הראשון שנמצא בחיפוש)
+AREAS = {"car-insurance": "ביטוח רכב", "apartment-insurance": "ביטוח דירה", "health-insurance": "ביטוח בריאות",
+         "travel-insurance": "ביטוח נסיעות לחו\"ל", "pets-insurance": "ביטוח חיות מחמד",
+         "mortgage-insurance": "ביטוח משכנתא", "life-insurance": "ביטוח חיים", "pension-savings": "פנסיה",
+         "pension_retirement": "פנסיה", "gemel": "קופות גמל", "savings": "חיסכון", "ishtalmutfund": "קרן השתלמות",
+         "loans": "הלוואות", "claims-customer-service": "תביעות", "customer-service": "שירות לקוחות",
+         "business-insurance": "ביטוח עסקים", "other-insurances": "ביטוחים נוספים",
+         "marine_aviation_insurance": "ביטוח ימי ואווירי", "home": "כללי"}
+
+
 def mask(text):
     text = re.sub(r"\S+@\S+", "•••", text)
     return re.sub(r"\d[\d\- ]{4,}\d", "•••", text)
 
 
-def record(question, result):
+def record(question, result, area=""):
     """רושם שאלה אחת. לא מפיל את הבוט אם המסד לא זמין."""
     if not enabled():
         return
     status = result.get("status", "")
     cmds = [("INCR", "makor:total"), ("INCR", f"makor:status:{status}")]
     if status == "not_found":
-        item = {"q": mask(question)[:300], "topic": result.get("department", {}).get("name", ""),
+        item = {"q": mask(question)[:300], "topic": AREAS.get(area, area or "כללי"),
                 "ts": int(time.time())}
         cmds += [("LPUSH", KEY, json.dumps(item, ensure_ascii=False)), ("LTRIM", KEY, 0, MAX_KEEP - 1)]
     try:

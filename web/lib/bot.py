@@ -113,6 +113,21 @@ def _verified_quote(quote, chunk_text):
     return ""
 
 
+def _closest_line(answer, chunk_text):
+    """גיבוי: אם המודל לא העתיק משפט מדויק, בוחרים את השורה בקטע שהכי דומה לתשובה
+    (הכי הרבה מילים משותפות). כך כמעט כל מקור מקבל משפט מודגש - והוא תמיד אמיתי."""
+    words = set(retrieval.tokenize(answer))
+    best, score = "", 0
+    for line in chunk_text.split("\n"):
+        line = _clean(line)
+        if not 25 <= len(line) <= 160:
+            continue
+        common = len(words & set(retrieval.tokenize(line)))
+        if common > score:
+            best, score = line, common
+    return best if score >= 4 else ""
+
+
 def _valid(data):
     return (isinstance(data, dict) and data.get("status") in ("answered", "not_found", "personal")
             and isinstance(data.get("answer"), str) and isinstance(data.get("sources", []), list))
@@ -131,7 +146,7 @@ def answer(question, history, chunks):
             c = chunks[int(s.get("chunk")) - 1]
         except (TypeError, ValueError, IndexError, AttributeError):
             continue
-        quote = _verified_quote(s.get("quote", ""), c["text"])
+        quote = _verified_quote(s.get("quote", ""), c["text"]) or _closest_line(text, c["text"])
         if c["url"] in seen:
             continue
         seen.add(c["url"])

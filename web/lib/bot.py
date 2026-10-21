@@ -116,16 +116,18 @@ def _verified_quote(quote, chunk_text):
 def _closest_line(answer, chunk_text):
     """גיבוי: אם המודל לא העתיק משפט מדויק, בוחרים את השורה בקטע שהכי דומה לתשובה
     (הכי הרבה מילים משותפות). כך כמעט כל מקור מקבל משפט מודגש - והוא תמיד אמיתי."""
-    words = set(retrieval.tokenize(answer))
+    def words_of(t):                                # מילים של 3 אותיות ומעלה (בלי "של", "את")
+        return set(re.findall(r"[א-ת]{3,}|[a-zA-Z0-9]{3,}", t))
+    words = words_of(answer)
     best, score = "", 0
     for line in chunk_text.split("\n"):
         line = _clean(line)
         if not 25 <= len(line) <= 160:
             continue
-        common = len(words & set(retrieval.tokenize(line)))
+        common = len(words & words_of(line))
         if common > score:
             best, score = line, common
-    return best if score >= 4 else ""
+    return best if score >= 3 else ""
 
 
 def _valid(data):

@@ -40,7 +40,7 @@
 
   // הצעות לשאלות בפתיחה - עוברות דרך הבוט האמיתי, כמו שאלה שמקלידים
   var SUGGESTIONS = [
-    "יש לי נזילה בבית, איך מגישים תביעה?",
+    "יש לי נזילה בבית, איך אני מגישה תביעה?",
     "מה ההשתתפות העצמית בביטוח לכלב?",
     "מה ההבדל בין ביטוח מקיף לביטוח צד ג'?",
     "Какая франшиза в страховке для собаки?"
@@ -387,7 +387,7 @@
   Chat.prototype.ask = function (raw) {
     var self = this;
     var question = (raw || "").trim();
-    if (!question || this.busy) return;
+    if (!question || this.busy) return Promise.resolve();
     this.toggleFaq(false);
     this.busy = true; this.sendBtn.disabled = true;
     this.input.value = ""; this.input.style.height = "auto";
@@ -400,7 +400,7 @@
     this.log.appendChild(bot);
     this.scroll();
 
-    fetch(BASE + "/api/ask", {
+    return fetch(BASE + "/api/ask", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question: question, history: this.history.slice(-3) })
     })
@@ -540,9 +540,26 @@
     return { open: function () { toggle(true); } };
   }
 
+  // התסריט מהאתגר - לכפתור "להריץ את התסריט" ולהדגמה על הבמה
+  var SCRIPT = ["יש לי נזילה בבית, איך אני מגישה תביעה?", "ותוך כמה זמן מקבלים תשובה?",
+                "האם הפוליסה שלי מכסה את זה?"];
+
+  // בצ'אט שבתוך הדף: ?q=שאלה שואל אותה מיד, ?demo=script מריץ את התסריט שאלה אחרי שאלה
+  function autoplay(chat) {
+    var p = new URLSearchParams(location.search);
+    var list = p.get("demo") === "script" ? SCRIPT : (p.get("q") ? [p.get("q").slice(0, 300)] : []);
+    list.reduce(function (prev, q) {
+      return prev.then(function () {
+        return new Promise(function (ok) { setTimeout(ok, 700); }).then(function () { return chat.ask(q); });
+      });
+    }, Promise.resolve());
+  }
+
   function start() {
     var target = opts.mount && document.querySelector(opts.mount);
-    window.Makor = target ? { chat: new Chat(target) } : mountFloating();
+    if (!target) { window.Makor = mountFloating(); return; }
+    window.Makor = { chat: new Chat(target) };
+    autoplay(window.Makor.chat);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();

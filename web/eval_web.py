@@ -108,7 +108,6 @@ def full_eval():
         r["quotes_ok"] = sum(1 for s in r["sources"] if s["quote"])
         r["pass"] = is_pass(q, r)
         results[q["id"]] = r
-        answers[q["id"]] = r["answer"]
         json.dump(results, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         print(f"{'✅' if r['pass'] else '❌'} {q['id']} [{r['status']}] {r['model']} {r['seconds']}s "
               f"quotes {r['quotes_ok']}/{len(r['sources'])} dept={r['department']['key']}  {q['question']}",
@@ -119,5 +118,32 @@ def full_eval():
     print(f"\nסה״כ: {passed}/{len(results)}")
 
 
+PUBLIC = os.path.join(HERE, "public", "eval.json")
+TYPE_NAMES = {"answerable": "יש תשובה באתר", "not_on_site": "אין תשובה באתר",
+              "boundary": "גבולות (אישי / ייעוץ / ניסיון עקיפה)", "follow_up": "שאלת המשך"}
+
+
+def export_public():
+    """התוצאות לדף "לצוות הפניקס" (public/eval.json): כל שאלה, מה ציפינו, מה הבוט ענה."""
+    results = json.load(open(OUT, encoding="utf-8"))
+    rows = []
+    for q in QUESTIONS:
+        r = results.get(q["id"])
+        if not r:
+            continue
+        src = r["sources"][0] if r["sources"] else {}
+        rows.append({"id": q["id"], "type": q["type"], "type_name": TYPE_NAMES[q["type"]],
+                     "question": q["question"], "context": BY_ID[q["context"]]["question"] if q.get("context") else "",
+                     "expected": q.get("note", ""), "pass": is_pass(q, r), "status": r["status"],
+                     "answer": r["answer"][:600], "source": src.get("url", ""), "quote": src.get("quote", ""),
+                     "seconds": r.get("seconds")})
+    secs = sorted(x["seconds"] for x in rows if x["seconds"])
+    summary = {"total": len(rows), "passed": sum(x["pass"] for x in rows),
+               "median_seconds": secs[len(secs) // 2] if secs else None,
+               "date": time.strftime("%d.%m.%Y", time.localtime(os.path.getmtime(OUT)))}
+    json.dump({"summary": summary, "rows": rows}, open(PUBLIC, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    print("נשמר:", PUBLIC, summary)
+
+
 if __name__ == "__main__":
-    (full_eval if sys.argv[1:] == ["full"] else retrieval_eval)()
+    {"full": full_eval, "export": export_public}.get((sys.argv[1:] or [""])[0], retrieval_eval)()

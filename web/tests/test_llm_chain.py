@@ -65,12 +65,12 @@ def t_day_block():                    # מכסה יומית -> חסום ל-3 ש�
     assert log == ["m1"], log
 
 
-def t_hedge():                        # הראשון איטי -> אחרי 5 שניות רץ במקביל השני, הוא מנצח
+def t_hedge():                        # הראשון איטי -> אחרי HEDGE_AFTER שניות רץ במקביל השני, הוא מנצח
     setup(("slow", 12), "ok")
     t = time.time()
     _, model = llm.generate_json("", "", {}, valid)
     took = time.time() - t
-    assert model == "m1" and 4.5 < took < 6.5, (model, took)
+    assert model == "m1" and llm.HEDGE_AFTER - .5 < took < llm.HEDGE_AFTER + 1.5, (model, took)
 
 
 def t_backoff():                      # כולם נכשלים -> 3 סבבים (0, 1, 3 שניות), ואז שגיאה מסודרת
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     real = list(llm.CHAIN)
     for name, f in [("429 -> מעבר מיידי למודל הבא", t_fallback),
                     ("מכסה יומית -> המודל מדולג בשאלות הבאות", t_day_block),
-                    ("מודל איטי -> מירוץ מקביל אחרי 5 שניות", t_hedge),
+                    ("מודל איטי -> מירוץ מקביל אחרי HEDGE_AFTER שניות", t_hedge),
                     ("כולם נכשלו -> Backoff של 1 ו-3 שניות", t_backoff),
                     ("רשימת המודלים לא מתרוקנת (באג שתוקן)", t_chain_survives),
                     ("תקרת זמן כוללת", t_budget)]:

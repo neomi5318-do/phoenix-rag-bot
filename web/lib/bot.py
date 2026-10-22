@@ -192,7 +192,13 @@ PERSONAL_OPENING = "אני יכול להסביר מה כתוב באתר באופ
 
 
 def _clean(s):
-    return re.sub(r"\s+", " ", s or "").strip(" \"'״„“”.")
+    s = re.sub(r"[\u200b-\u200f\u2060\ufeff]", "", s or "")       # תווים בלתי נראים מהאתר
+    return re.sub(r"\s+", " ", s).strip(" \"'״„“”.,;:")
+
+
+def _words(t):
+    """מילים של 3 אותיות ומעלה (בלי "של", "את") - כדי למדוד כמה שני טקסטים קשורים."""
+    return set(re.findall(r"[א-ת]{3,}|[a-zA-Z0-9]{3,}", t))
 
 
 def _verified_quote(quote, chunk_text):
@@ -207,20 +213,28 @@ def _verified_quote(quote, chunk_text):
 
 
 def _closest_line(answer, chunk_text):
-    """גיבוי: אם המודל לא העתיק משפט מדויק, בוחרים את השורה בקטע שהכי דומה לתשובה
-    (הכי הרבה מילים משותפות). כך כמעט כל מקור מקבל משפט מודגש - והוא תמיד אמיתי."""
-    def words_of(t):                                # מילים של 3 אותיות ומעלה (בלי "של", "את")
-        return set(re.findall(r"[א-ת]{3,}|[a-zA-Z0-9]{3,}", t))
-    words = words_of(answer)
+    """השורה בקטע שהכי דומה לתשובה (הכי הרבה מילים משותפות). תמיד שורה אמיתית מהאתר."""
+    words = _words(answer)
     best, score = "", 0
     for line in chunk_text.split("\n"):
         line = _clean(line)
         if not 25 <= len(line) <= 160:
             continue
-        common = len(words & words_of(line))
+        common = len(words & _words(line))
         if common > score:
             best, score = line, common
     return best if score >= 3 else ""
+
+
+def _best_quote(model_quote, answer, chunk_text):
+    """המשפט המודגש: הציטוט של המודל, אם הוא מופיע בקטע מילה במילה *וגם* קשור לתשובה.
+    אם הוא אמיתי אבל לא קשור (למשל "אם מלאו לך 67 שנים..." בתשובה על איך מגישים) -
+    בוחרים את השורה בקטע שהכי מוכיחה את התשובה. אם המודל לא העתיק נכון - גם."""
+    q = _verified_quote(model_quote, chunk_text)
+    alt = _closest_line(answer, chunk_text)
+    if q and alt and len(_words(answer) & _words(alt)) >= len(_words(answer) & _words(q)) + 3:
+        return alt
+    return q or alt
 
 
 def _clean_table(t):
@@ -303,7 +317,7 @@ def answer(question, history, chunks):
             c = chunks[int(s.get("chunk")) - 1]
         except (TypeError, ValueError, IndexError, AttributeError):
             continue
-        quote = _verified_quote(s.get("quote", ""), c["text"]) or _closest_line(text, c["text"])
+        quote = _best_quote(s.get("quote", ""), text, c["text"])
         if c["url"] in seen:
             continue
         seen.add(c["url"])

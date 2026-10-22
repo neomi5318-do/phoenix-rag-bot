@@ -8,6 +8,7 @@
   POST /api/ask  -> {"question": "...", "history": [{"q": ..., "a": ..., "urls": [...]}]}
                     1. מחפש באתר את 6 הקטעים הרלוונטיים (lib/retrieval.py)
                     2. מנסח תשובה רק מהם, עם ציטוט מאומת ומוקד מתאים (lib/bot.py)
+                    (שאלה שכבר נשאלה באותו הקשר נענית מהמטמון - lib/cache.py)
 
 הרצה מקומית:  python app.py  ->  http://localhost:8000
 """
@@ -16,7 +17,7 @@ import time
 
 from flask import Flask, jsonify, request, send_from_directory
 
-from lib import bot, insights, retrieval
+from lib import bot, cache, insights, retrieval
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = os.path.join(HERE, "public")
@@ -62,11 +63,22 @@ def ask():
         if not question:
             return jsonify(error="חסרה שאלה"), 400
 
-        chunks = bot.find_chunks(question, history)
-        result = bot.answer(question, history, chunks)
+        cached = cache.get(question, history)            # שאלה שכבר נשאלה -> תשובה מיידית, בלי מכסה
+        if cached:
+            meta = cached.pop("_meta", {})
+            result, section = cached, meta.get("section", "")
+            report_chunks = [{"keyword": meta.get("kw", 0)}]
+            result["cached"] = True
+        else:
+            chunks = bot.find_chunks(question, history)
+            result = bot.answer(question, history, chunks)
+            section = chunks[0]["section"] if chunks else ""
+            report_chunks = chunks
+            kw = max((c.get("keyword", 0) for c in chunks), default=0)
+            cache.put(question, history, {**result, "_meta": {"section": section, "kw": kw}})
         result["ms"] = int((time.time() - t) * 1000)
-        if insights.worth_reporting(question, result):   # רק שאלות אמיתיות על הנושא נכנסות לדוח
-            insights.record(question, result, chunks[0]["section"] if chunks else "")
+        if insights.worth_reporting(question, result, report_chunks):   # רק שאלות אמיתיות על הנושא נכנסות לדוח
+            insights.record(question, result, section)
         return jsonify(result)
     except Exception as e:  # noqa: BLE001
         print("ask error:", repr(e))

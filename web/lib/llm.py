@@ -29,7 +29,7 @@ HEDGE_AFTER = 3           # שניות - אחרי זה מתחילים במקבי
 TOTAL_BUDGET = 40         # שניות לכל היותר לתשובה (Vercel עוצר פונקציה אחרי 60)
 RETRY_PAUSES = (1, 3)     # המתנה לפני סבב חוזר, כשכל המודלים נכשלו
 
-_pool = ThreadPoolExecutor(max_workers=8)
+_pool = ThreadPoolExecutor(max_workers=12)
 _blocked_until = {}       # מודל -> עד מתי לא לנסות אותו
 
 
@@ -76,15 +76,22 @@ def _groq(model, system, prompt, schema, timeout=25):
     return r.json()["choices"][0]["message"]["content"]
 
 
-# סדר הניסיון: Gemini ו-Groq לסירוגין, כדי שהגיבוי המהיר יגיע מוקדם
+# סדר הניסיון: Gemini ו-Groq לסירוגין, כדי שהגיבוי המהיר יגיע מוקדם.
+# לכל מודל יש מכסה יומית משלו בדרגה החינמית, ולכן רשימה ארוכה = יותר שאלות ביום.
+# מודל שהמכסה שלו נגמרה נכשל תוך חצי שנייה ומדולג ל-3 שעות, כך שהרשימה הארוכה לא מאטה.
 CHAIN = [
     ("gemini-3.8-flash", _gemini),
     ("openai/gpt-oss-120b", _groq),
     ("gemini-3.5-flash", _gemini),
     ("openai/gpt-oss-20b", _groq),
+    ("gemini-3-flash-preview", _gemini),
+    ("gemma-4-26b-a4b-it", _gemini),
     ("gemini-3.6-flash", _gemini),
     ("gemini-3.7-flash", _gemini),
+    ("gemini-3.5-flash-lite", _gemini),
     ("gemini-3.1-flash-lite", _gemini),
+    ("gemini-3.1-flash-lite-preview", _gemini),
+    ("gemma-4-31b-it", _gemini),
     ("qwen/qwen3.8-27b", _groq),
 ]
 

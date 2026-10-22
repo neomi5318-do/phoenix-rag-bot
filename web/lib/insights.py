@@ -18,7 +18,9 @@ from collections import Counter
 
 import requests
 
-KEY = "makor:gaps"
+# v2: הדוח התחיל מחדש ב-22.10.2026, עם המסנן (worth_reporting). הרשומות מלפני המסנן לא מוצגות.
+PREFIX = "makor:v2"
+KEY = f"{PREFIX}:gaps"
 MAX_KEEP = 1000
 
 
@@ -51,13 +53,17 @@ AREAS = {"car-insurance": "ביטוח רכב", "apartment-insurance": "ביטו�
          "marine_aviation_insurance": "ביטוח ימי ואווירי", "home": "כללי"}
 
 
-def worth_reporting(question, result):
-    """מה נכנס לדוח: רק שאלה אמיתית שקשורה לביטוח / חיסכון / שירותי הפניקס.
-    לא נכנסים: קשקוש וסימנים ("???", "asdf"), שאלה של מילה אחת, ושאלה שהמודל סימן
-    כלא קשורה (בדיחה, מתכון, ניסיון לשנות את הכללים) - כדי שהצוות יראה רק פערים אמיתיים."""
-    if result.get("model") == "no-match" or not result.get("on_topic", True):
+def worth_reporting(question, result, chunks=()):
+    """מה נכנס לדוח: רק שאלה אמיתית שקשורה לביטוח / חיסכון / שירותי הפניקס. שלושה תנאים:
+    1. המודל סימן במפורש שהשאלה קשורה לנושא (on_topic) - לא בדיחה, מתכון או ניסיון לשנות כללים.
+    2. לפחות מילה אחת מהשאלה מופיעה באתר הפניקס (חיפוש המילים מצא משהו) - לא קשקוש.
+    3. לפחות שתי מילים.
+    כך הצוות רואה רק פערים אמיתיים."""
+    if result.get("model") == "no-match" or result.get("on_topic") is not True:
         return False
-    return len(re.findall(r"[^\W\d_]{2,}", question)) >= 2      # לפחות שתי מילים
+    if chunks and not any(c.get("keyword", 0) > 0 for c in chunks):
+        return False
+    return len(re.findall(r"[^\W\d_]{2,}", question)) >= 2
 
 
 def mask(text):
@@ -70,7 +76,7 @@ def record(question, result, area=""):
     if not enabled():
         return
     status = result.get("status", "")
-    cmds = [("INCR", "makor:total"), ("INCR", f"makor:status:{status}")]
+    cmds = [("INCR", f"{PREFIX}:total"), ("INCR", f"{PREFIX}:status:{status}")]
     if status == "not_found":
         item = {"q": mask(question)[:300], "topic": AREAS.get(area, area or "כללי"),
                 "ts": int(time.time())}
@@ -86,8 +92,8 @@ def report():
     if not enabled():
         return {"enabled": False}
     total, answered, not_found, personal, raw = _redis(
-        ("GET", "makor:total"), ("GET", "makor:status:answered"),
-        ("GET", "makor:status:not_found"), ("GET", "makor:status:personal"),
+        ("GET", f"{PREFIX}:total"), ("GET", f"{PREFIX}:status:answered"),
+        ("GET", f"{PREFIX}:status:not_found"), ("GET", f"{PREFIX}:status:personal"),
         ("LRANGE", KEY, 0, MAX_KEEP - 1))
     gaps = [json.loads(x) for x in raw or []]
     topics = Counter(g.get("topic") or "כללי" for g in gaps)

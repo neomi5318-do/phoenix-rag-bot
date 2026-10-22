@@ -312,29 +312,35 @@
     this.welcome();
   };
 
+  // שאלה בקול: הדיבור נכתב לתוך שדה הכתיבה, ולא נשלח לבד - אפשר לעצור לנשום, לתקן, ואז ללחוץ "שליחה".
+  // לחיצה נוספת על המיקרופון עוצרת את ההאזנה.
   Chat.prototype.setupMic = function (btn) {
     var self = this;
     if (!Recognition) return;                       // דפדפן בלי זיהוי דיבור - אין כפתור
     btn.hidden = false;
-    var rec = null;
+    var rec = null, before = "";
     btn.addEventListener("click", function () {
       if (rec) { rec.stop(); return; }
       rec = new Recognition();
       rec.lang = "he-IL";
       rec.interimResults = true;
-      rec.onstart = function () { btn.classList.add("is-on"); self.input.placeholder = "מקשיב… דברו עכשיו"; };
+      rec.continuous = true;                        // לא נעצר בהפסקה קצרה
+      before = self.input.value ? self.input.value.replace(/\s*$/, " ") : "";
+      rec.onstart = function () { btn.classList.add("is-on"); self.input.placeholder = "מקשיב… כשמסיימים, לוחצים שליחה"; };
       rec.onresult = function (e) {
         var text = Array.prototype.map.call(e.results, function (r) { return r[0].transcript; }).join("");
-        self.input.value = text;
-        if (e.results[e.results.length - 1].isFinal) { rec.stop(); self.ask(text); }
+        self.input.value = before + text;
+        self.input.dispatchEvent(new Event("input"));   // התאמת גובה השדה
       };
       rec.onerror = function () { self.input.placeholder = "לא הצלחתי לשמוע. אפשר לנסות שוב או להקליד."; };
       rec.onend = function () {
         btn.classList.remove("is-on"); rec = null;
         if (self.input.placeholder.indexOf("מקשיב") === 0) self.input.placeholder = "כתבו שאלה…";
+        self.input.focus();
       };
       rec.start();
     });
+    this.stopMic = function () { if (rec) rec.stop(); };
   };
 
   Chat.prototype.welcome = function () {
@@ -390,6 +396,7 @@
     var self = this;
     var question = (raw || "").trim();
     if (!question || this.busy) return Promise.resolve();
+    if (this.stopMic) this.stopMic();
     this.toggleFaq(false);
     this.busy = true; this.sendBtn.disabled = true;
     this.input.value = ""; this.input.style.height = "auto";
@@ -438,11 +445,13 @@
   Chat.prototype.showAnswer = function (bot, r) {
     var self = this;
     var lang = langOf(r.answer), L = labels(lang);
-    var top = el("div", "mk-answer-top");
-    top.appendChild(el("span", "mk-badge " + r.status, esc(L[r.status] || "")));
-    var speak = speakButton(r.answer, lang, L);
-    if (speak) top.appendChild(speak);
-    bot.appendChild(top);
+    if (!r.unclear) {                               // "לא הבנתי את השאלה" - בלי תג ובלי הקראה
+      var top = el("div", "mk-answer-top");
+      top.appendChild(el("span", "mk-badge " + r.status, esc(L[r.status] || "")));
+      var speak = speakButton(r.answer, lang, L);
+      if (speak) top.appendChild(speak);
+      bot.appendChild(top);
+    }
 
     var bubble = el("div", "mk-bubble");
     bot.appendChild(bubble);

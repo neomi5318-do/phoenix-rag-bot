@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>צ'אט לאתר הפניקס · פרויקט האקתון</title>
-<meta name="description" content="בוט שעונה ללקוחות הפניקס רק מתוך האתר, מדגיש את המשפט המדויק שעליו התשובה נשענת, מפנה למוקד הנכון, ומראה לצוות התוכן מה חסר באתר.">
+<meta name="description" content="בוט שעונה לגולשים באתר הפניקס רק מתוך האתר, מדגיש את המשפט המדויק שעליו התשובה נשענת, מפנה למוקד הנכון, ומראה לצוות התוכן מה חסר באתר.">
 <link rel="preload" href="fonts/rubik-hebrew-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/suez-one-hebrew-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="widget.css" data-mk-css>
 <style>
-/* layout: דף אחד לפניקס - פתיח, "שורה אחת באתר שלכם", מה הלקוחות מקבלים, הפיצ'ר המקורי,
+/* layout: דף אחד לפניקס - פתיח, "שורה אחת באתר שלכם", מה הגולשים מקבלים, הפיצ'ר המקורי,
    למה אפשר לסמוך עליו (מקופל), ואיך זה בנוי. הצ'אט עצמו חי בבועה בפינה. */
 :root {
   --bg: #f4f6fa; --surface: #ffffff; --ink: #172033; --muted: #5f6b7d; --line: #e1e6ee; --soft: #eef1f6;
@@ -231,7 +231,7 @@ html.mk-chat-open .top nav { margin-inline-start: 0; flex-basis: 100%; }
 button.btn { font: inherit; font-weight: 600; font-size: 15.5px; cursor: pointer; color: inherit; }
 button.btn.primary { color: #fff; }
 
-/* מה הלקוחות מקבלים */
+/* מה הגולשים מקבלים */
 .gets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .get { display: flex; flex-direction: column; gap: 10px; }
 .get .ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
@@ -280,10 +280,10 @@ button.btn.primary { color: #fff; }
 <div class="wrap">
   <header class="top">
     <a class="brand" href="/"><span class="mk" aria-hidden="true"><span class="mk-orb" data-state="idle"><svg viewBox="0 0 24 24"><rect class="ln" x="4" y="6" width="16" height="3" rx="1.5"/><rect class="ln" x="9" y="10.5" width="11" height="3" rx="1.5"/><rect class="ln" x="6" y="15" width="14" height="3" rx="1.5"/></svg></span></span>צ'אט לאתר הפניקס</a>
-    <span class="pill">פרויקט האקתון · לא שירות רשמי של הפניקס</span>
+    <span class="pill">הדגמה · לא שירות רשמי של הפניקס</span>
     <nav aria-label="ניווט">
       <a href="#embed">באתר שלכם</a>
-      <a href="#gets">מה הלקוחות מקבלים</a>
+      <a href="#gets">מה הגולשים מקבלים</a>
       <a href="#feature">הפיצ'ר המקורי</a>
       <a href="#trust">אמינות</a>
       <a href="#arch">איך זה בנוי</a>
@@ -292,10 +292,10 @@ button.btn.primary { color: #fff; }
   </header>
 
   <div class="hero">
-    <div class="eyebrow">בוט לאתר הפניקס</div>
+    <div class="eyebrow">האקתון AI קוד פתוח 2026 · אתגר הפניקס</div>
     <h1>הבוט שיודע את האתר שלכם, <span class="hl">וגם יודע להגיד מה לא כתוב בו.</span></h1>
-    <p class="challenge">"לקוח ששואל 'איך מגישים תביעה על נזקי מים?' לא רוצה לחפש - הוא רוצה תשובה."<small>מתוך האתגר שלכם</small></p>
-    <p class="lede">הבוט קרא את כל העמודים הציבוריים באתר שלכם. הוא עונה רק ממה שכתוב בהם, מראה ללקוח את המשפט המדויק שעליו התשובה נשענת, ובשאלה אישית מעביר אותו למוקד הנכון.</p>
+    <p class="challenge">"לקוח ששואל 'איך מגישים תביעה על נזקי מים?' לא רוצה לחפש - הוא רוצה תשובה."<small>מתוך האתגר של הפניקס</small></p>
+    <p class="lede">הבוט קרא את כל העמודים הציבוריים באתר שלכם. הוא עונה רק ממה שכתוב בהם, מראה לגולש את המשפט המדויק שעליו התשובה נשענת, ובשאלה אישית מעביר אותו למוקד הנכון.</p>
     <div class="actions">
       <button class="btn primary" type="button" id="open-chat">לשאול את הבוט עכשיו</button>
       <a class="btn" href="#embed">איך מכניסים אותו לאתר</a>
@@ -319,7 +319,7 @@ button.btn.primary { color: #fff; }
       <div class="code"><button class="copy" type="button" id="copy">העתקה</button><span id="snippet"></span></div>
       <ul>
         <li>לא משנים שום דבר אחר באתר, והעיצוב לא מתנגש בשלכם.</li>
-        <li>הלקוח מקבל תשובה בלי לעזוב את העמוד שבו הוא נמצא.</li>
+        <li>הגולש מקבל תשובה בלי לעזוב את העמוד שבו הוא נמצא.</li>
         <li>כשהאתר מתעדכן: מריצים שוב את האיסוף, והבוט יודע את התוכן החדש.</li>
       </ul>
     </div>
@@ -327,8 +327,8 @@ button.btn.primary { color: #fff; }
 
   <section id="gets">
     <div class="sec-head">
-      <h2>מה הלקוחות שלכם מקבלים</h2>
-      <p>שלושת הכללים מהאתגר, כמו שהלקוח פוגש אותם בצ'אט.</p>
+      <h2>מה הגולשים באתר שלכם מקבלים</h2>
+      <p>שלושת הכללים מהאתגר, כמו שגולש פוגש אותם בצ'אט.</p>
     </div>
     <div class="gets">
       <article class="card get">
@@ -340,7 +340,7 @@ button.btn.primary { color: #fff; }
       <article class="card get">
         <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h7"/><path d="M14.5 4.5l5 5L11 18H6v-5z"/></svg></span>
         <h3>המשפט המדויק, מודגש בעמוד</h3>
-        <p>לחיצה על המקור פותחת את העמוד האמיתי באתר שלכם, והמשפט שעליו התשובה נשענת כבר מסומן בצהוב. הלקוח רואה בעיניים שזה נכון.</p>
+        <p>לחיצה על המקור פותחת את העמוד האמיתי באתר שלכם, והמשפט שעליו התשובה נשענת כבר מסומן בצהוב. הגולש רואה בעיניים שזה נכון.</p>
         <div class="demo-hl"><span class="url">fnx.co.il/…/damage-to-the-apartment/#:~:text=נשלח לך בתוך 30 יום</span>…לאחר שנקבל את כל המסמכים הנדרשים, <mark>נשלח לך בתוך 30 יום</mark> הודעה לגבי ההחלטה…</div>
       </article>
       <article class="card get">
@@ -361,17 +361,17 @@ button.btn.primary { color: #fff; }
   <section id="feature">
     <div class="sec-head">
       <h2>הפיצ'ר המקורי: "לא כתוב באתר" הופך לרשימת משימות בשבילכם</h2>
-      <p>האתגר ביקש שהבוט יידע להגיד "זה לא כתוב באתר". אנחנו שומרים את הרגעים האלה, כי כל אחד מהם הוא לקוח שחיפש משהו באתר שלכם ולא מצא.</p>
+      <p>האתגר ביקש שהבוט יידע להגיד "זה לא כתוב באתר". אנחנו שומרים את הרגעים האלה, כי כל אחד מהם הוא גולש שחיפש משהו באתר שלכם ולא מצא.</p>
     </div>
     <div class="feature">
       <div class="feature-text">
-        <span class="tag">חדש, ולא ביקשו אותו</span>
+        <span class="tag">חדש, ולא נדרש באתגר</span>
         <h3>הבוט אומר לצוות התוכן מה חסר באתר</h3>
-        <p>כל שאלה שלא נמצאה לה תשובה נרשמת בדוח אחד, ממוינת לפי האזור באתר שהכי קרוב אליה. כך רואים לא רק מה הלקוחות שואלים, אלא איפה האתר לא עונה להם.</p>
+        <p>כל שאלה שלא נמצאה לה תשובה נרשמת בדוח אחד, ממוינת לפי האזור באתר שהכי קרוב אליה. כך רואים לא רק מה הגולשים שואלים, אלא איפה האתר לא עונה להם.</p>
         <ol>
-          <li>לקוח שואל שאלה שאין לה תשובה באתר.</li>
+          <li>גולש שואל שאלה שאין לה תשובה באתר.</li>
           <li>הוא מקבל תשובה כנה והפניה למוקד הנכון.</li>
-          <li>השאלה נכנסת לדוח, אחרי מחיקה אוטומטית של מספרים ומיילים.</li>
+          <li>אם השאלה קשורה לביטוח או לשירותי הפניקס, היא נכנסת לדוח, אחרי מחיקה אוטומטית של מספרים ומיילים. קשקוש ושאלות לא קשורות מסוננים.</li>
           <li>צוות התוכן רואה מה להוסיף לאתר, ובאיזה עמוד.</li>
         </ol>
         <a class="btn primary" href="insights.html">לדוח המלא ←</a>
@@ -391,9 +391,9 @@ button.btn.primary { color: #fff; }
   <section id="trust">
     <div class="sec-head">
       <h2>למה אפשר לסמוך עליו</h2>
-      <p>הנחיה למודל לא מספיקה, כי מודלים טועים. לכן כל כלל נאכף פעמיים: בהנחיות, ובקוד שבודק כל תשובה לפני שהיא מגיעה ללקוח. ובדקנו את זה.</p>
+      <p>הנחיה למודל לא מספיקה, כי מודלים טועים. לכן כל כלל נאכף פעמיים: בהנחיות, ובקוד שבודק כל תשובה לפני שהיא מגיעה לגולש. ובדקנו את זה.</p>
     </div>
-    <div class="score"><b id="s-pass">–</b><span>שאלות בדיקה עברו. 12 מהן הן שאלות שאסור לענות עליהן: אין תשובה באתר, שאלה אישית, ייעוץ, או ניסיון לעקוף את הכללים. כמו שכתבתם בטיפים: "מודדות גם 'לא לענות' - זה חצי מהציון".</span></div>
+    <div class="score"><b id="s-pass">–</b><span>שאלות בדיקה עברו. 12 מהן הן שאלות שאסור לענות עליהן: אין תשובה באתר, שאלה אישית, ייעוץ, או ניסיון לעקוף את הכללים. כמו שכתוב בטיפים של האתגר: "מודדות גם 'לא לענות' - זה חצי מהציון".</span></div>
     <div class="by-type" id="by-type"></div>
 
     <details class="fold">
@@ -429,7 +429,7 @@ button.btn.primary { color: #fff; }
     </details>
 
     <details class="fold">
-      <summary><b>התסריט מהאתגר שלכם</b><span>מה ביקשתם, ומה הבוט ענה</span></summary>
+      <summary><b>התסריט מהאתגר</b><span>מה האתגר ביקש, ומה הבוט ענה</span></summary>
       <div class="fold-body">
         <div id="turns"><p class="skeleton">טוען את התשובות…</p></div>
         <p class="muted" id="recorded" style="font-size:14px"></p>
@@ -446,9 +446,9 @@ button.btn.primary { color: #fff; }
       <div class="fold-body">
         <div class="lessons">
           <div class="card lesson"><span class="was">היה</span>"ותוך כמה זמן מקבלים תשובה?" קיבלה "לא נמצא", למרות שהתשובה כתובה באותו עמוד.<span class="now">עכשיו</span>שאלת המשך מתחילה מהעמוד שממנו ענינו קודם, ועונה "בתוך 30 יום".</div>
-          <div class="card lesson"><span class="was">היה</span>"האם הפוליסה שלי מכסה?" קיבלה לפעמים "כן, הפוליסה שלך יכולה לכסות…".<span class="now">עכשיו</span>על פוליסה של לקוח לא עונים כן או לא. מסבירים מה כתוב באתר ומפנים לשירות הלקוחות.</div>
+          <div class="card lesson"><span class="was">היה</span>"האם הפוליסה שלי מכסה?" קיבלה לפעמים "כן, הפוליסה שלך יכולה לכסות…".<span class="now">עכשיו</span>על הפוליסה האישית של הגולש לא עונים כן או לא. מסבירים מה כתוב באתר ומפנים לשירות הלקוחות.</div>
           <div class="card lesson"><span class="was">היה</span>"מה הטלפון של תביעות דירה?" קיבלה את מספר הוואטסאפ. בעמוד "צור קשר" יש אייקון של וואטסאפ ליד המספר, והאייקון נמחק כשחילצנו את הטקסט.<span class="now">עכשיו</span>האיסוף כותב "וואטסאפ:" במילים ליד המספר, והתשובה היא 5070*.</div>
-          <div class="card lesson"><span class="was">היה</span>"יש לי נזילה בבית, איך מגישים תביעה?" סווגה כשאלה אישית, בגלל "יש לי".<span class="now">עכשיו</span>שאלה על איך עושים או מה אפשר לעשות נענית מהאתר, גם כשהלקוח מספר על המקרה שלו.</div>
+          <div class="card lesson"><span class="was">היה</span>"יש לי נזילה בבית, איך מגישים תביעה?" סווגה כשאלה אישית, בגלל "יש לי".<span class="now">עכשיו</span>שאלה על איך עושים או מה אפשר לעשות נענית מהאתר, גם כשהגולש מספר על המקרה שלו.</div>
           <div class="card lesson"><span class="was">היה</span>כשכל המודלים החינמיים הגיעו למכסה בבת אחת, השרת נתקע עד הפעלה מחדש.<span class="now">עכשיו</span>הוא מחכה ומנסה שוב (Backoff), עוצר אחרי 40 שניות לכל היותר, וחוזר לעבוד מעצמו.</div>
           <div class="card lesson"><span class="was">היה</span>המשפט המודגש היה לפעמים אמיתי, אבל לא קשור לנקודה העיקרית בתשובה.<span class="now">עכשיו</span>הקוד בודק שהמשפט מוכיח את המשפט הראשון של התשובה, ואם לא - בוחר שורה אחרת מהעמוד.</div>
         </div>
@@ -546,14 +546,14 @@ button.btn.primary { color: #fff; }
       var e = EXPECT[i] || { want: "", check: function () { return false; } };
       var ok = e.check(t, d.turns);
       return '<div class="turn">' +
-        '<div class="ask"><span class="who">לקוחה</span><span class="bubble">' + esc(t.question) + "</span></div>" +
-        '<div class="card expect"><div class="label">מה כתבתם שהבוט צריך לעשות</div><p>' + esc(e.want) + "</p></div>" +
+        '<div class="ask"><span class="who">גולש</span><span class="bubble">' + esc(t.question) + "</span></div>" +
+        '<div class="card expect"><div class="label">מה האתגר ביקש</div><p>' + esc(e.want) + "</p></div>" +
         '<div class="card got"><div class="label">מה הבוט ענה <span class="badge ' + esc(t.status) + '">' + esc(STATUS[t.status] || "") + "</span>" +
         '<span class="muted" style="font-weight:400">' + esc(t.seconds) + " שניות</span></div>" +
         '<div class="text">' + paras(t.answer) + "</div>" +
         (t.sources[0] ? srcHtml(t.sources[0]) : "") +
         (t.status !== "answered" ? '<div class="src"><span class="label">☎️ המוקד שהוצג</span><span>' + esc(t.department) + "</span></div>" : "") +
-        (ok ? '<div class="verdict">✓ כמו שביקשתם</div>' : "") + "</div></div>";
+        (ok ? '<div class="verdict">✓ כמו שהאתגר ביקש</div>' : "") + "</div></div>";
     }).join("");
     document.getElementById("recorded").textContent = "תשובות אמיתיות שהבוט החי החזיר ב-" + d.recorded + ". אפשר לשאול את אותן שאלות בצ'אט שבפינה.";
   }).catch(function () { document.getElementById("turns").innerHTML = '<p class="skeleton">לא הצלחתי לטעון. אפשר להריץ את התסריט בבוט החי.</p>'; });

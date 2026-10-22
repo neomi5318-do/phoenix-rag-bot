@@ -65,7 +65,7 @@ def ask():
         chunks = bot.find_chunks(question, history)
         result = bot.answer(question, history, chunks)
         result["ms"] = int((time.time() - t) * 1000)
-        if result.get("model") != "no-match":      # ג'יבריש ("???") הוא לא פער תוכן - לא נרשם בדוח
+        if insights.worth_reporting(question, result):   # רק שאלות אמיתיות על הנושא נכנסות לדוח
             insights.record(question, result, chunks[0]["section"] if chunks else "")
         return jsonify(result)
     except Exception as e:  # noqa: BLE001

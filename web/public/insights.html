@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>מקור · מה הלקוחות שואלים</title>
-<meta name="description" content="דוח לצוות הפניקס: השאלות שלקוחות שאלו את הבוט, ואין עליהן תשובה באתר.">
+<title>מה הגולשים שואלים · דוח לצוות התוכן</title>
+<meta name="description" content="דוח לצוות הפניקס: השאלות שגולשים שאלו את הבוט, ואין עליהן תשובה באתר.">
 <link rel="stylesheet" href="widget.css" data-mk-css>
 <style>
 /* layout: לוח בקרה בעמודה אחת - מספרים למעלה, נושאים, ואז רשימת השאלות שלא נענו */
@@ -57,11 +57,11 @@ h1 span { background: linear-gradient(transparent 55%, var(--mark) 55%, var(--ma
 </head>
 <body>
 <div class="wrap">
-  <nav class="top"><a href="/">→ חזרה לבוט</a></nav>
+  <nav class="top"><a href="/">→ חזרה לדף הראשי</a></nav>
   <header>
     <div class="eyebrow">לצוות הפניקס</div>
-    <h1>מה הלקוחות שואלים, <span>ואין לזה תשובה באתר</span></h1>
-    <p class="lede">כל שאלה שהבוט לא מצא לה תשובה באתר נרשמת כאן. זו רשימה מוכנה של תוכן שכדאי להוסיף לאתר: הלקוחות כבר אמרו מה חסר להם.</p>
+    <h1>מה הגולשים שואלים, <span>ואין לזה תשובה באתר</span></h1>
+    <p class="lede">כל שאלה שהבוט לא מצא לה תשובה באתר נרשמת כאן. זו רשימה מוכנה של תוכן שכדאי להוסיף לאתר: הגולשים כבר אמרו מה חסר להם.</p>
   </header>
 
   <section class="stats" id="stats" aria-label="סיכום">
@@ -81,7 +81,7 @@ h1 span { background: linear-gradient(transparent 55%, var(--mark) 55%, var(--ma
     <div id="recent"><p class="empty">טוען…</p></div>
   </section>
 
-  <p class="note">פרטיות: נשמר רק נוסח השאלה, אחרי מחיקה אוטומטית של מספרים ארוכים וכתובות מייל, והנושא שהבוט זיהה. לא נשמרים שם, כתובת IP או כל פרט מזהה.</p>
+  <p class="note">מה נכנס לדוח: רק שאלות שקשורות לביטוח, לחיסכון או לשירותי הפניקס. קשקוש, שאלות של מילה אחת ושאלות לא קשורות מסוננים, כדי שתראו רק פערים אמיתיים.<br>פרטיות: נשמר רק נוסח השאלה, אחרי מחיקה אוטומטית של מספרים ארוכים וכתובות מייל, והנושא שהבוט זיהה. לא נשמרים שם, כתובת IP או כל פרט מזהה.</p>
 </div>
 
 <script>
@@ -102,7 +102,7 @@ h1 span { background: linear-gradient(transparent 55%, var(--mark) 55%, var(--ma
     document.getElementById("topics").innerHTML = d.topics.length ? d.topics.map(function (t) {
       return '<div class="bar"><span>' + esc(t[0]) + '</span><div class="bar-track"><div class="bar-fill" style="width:' +
         Math.max(4, 100 * t[1] / max) + '%"></div></div><b>' + t[1] + "</b></div>";
-    }).join("") : '<p class="empty">עוד אין שאלות כאלה. הן יופיעו כאן כשלקוחות ישאלו משהו שלא כתוב באתר.</p>';
+    }).join("") : '<p class="empty">עוד אין שאלות כאלה. הן יופיעו כאן כשגולשים ישאלו משהו שלא כתוב באתר.</p>';
 
     document.getElementById("recent").innerHTML = d.recent.length ? d.recent.map(function (g) {
       var when = new Date(g.ts * 1000).toLocaleDateString("he-IL", { day: "numeric", month: "numeric" });

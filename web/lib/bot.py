@@ -99,6 +99,8 @@ ANSWER_SCHEMA = {
 }
 
 NOT_FOUND = "לא מצאתי את המידע הזה באתר הפניקס. אפשר לפנות למוקד, שיוכל לעזור."
+# כשהשאלה לא מובנת בכלל ("?", "123", קשקוש) - מבקשים לנסח במילים, במקום "לא מצאתי"
+UNCLEAR = "לא הצלחתי להבין את השאלה. אפשר לכתוב אותה במילים, למשל: \"איך מגישים תביעה על נזקי מים?\""
 HEBREW = re.compile(r"[א-ת]")
 
 
@@ -330,7 +332,7 @@ def no_match(chunks):
 def answer(question, history, chunks):
     """שאלה + קטעים -> תשובה מוכנה להצגה."""
     if no_match(chunks):
-        return {"status": "not_found", "answer": NOT_FOUND, "sources": [],
+        return {"status": "not_found", "answer": UNCLEAR, "sources": [],
                 "department": {"key": "general", **departments()["general"]}, "model": "no-match"}
     system = SYSTEM_PROMPT.format(departments=_dept_list())
     data, model = llm.generate_json(system, build_prompt(question, history, chunks),

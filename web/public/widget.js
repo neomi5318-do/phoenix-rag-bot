@@ -145,6 +145,9 @@
       var card = el("div", "mk-src");
       card.appendChild(el("div", "mk-src-title", "<span>" + esc(L.source) + "</span>" + esc(s.title)));
       if (s.quote) card.appendChild(el("div", "mk-quote", "<mark>" + esc(s.quote) + "</mark>"));
+      // כתובת העמוד, כמו שהאתגר ביקש ("המקור: fnx.co.il/…")
+      var short = s.url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+      card.appendChild(el("div", "mk-src-url", '<bdi dir="ltr">' + esc(short) + "</bdi>"));
       var a = el("a", "mk-src-link", esc(s.quote ? L.openHl : L.open) + ICON.ext);
       a.href = highlightLink(s.url, s.quote); a.target = "_blank"; a.rel = "noopener";
       card.appendChild(a);

@@ -171,6 +171,7 @@
   border: 1px solid var(--mk-line); border-radius: 6px; padding: 0 6px;
 }
 .mk-quote { font-size: 14px; line-height: 1.7; }
+.mk-src-url { font-size: 12px; color: var(--mk-muted); overflow-wrap: anywhere; line-height: 1.4; }
 .mk-quote mark {
   background: linear-gradient(transparent 30%, var(--mk-mark) 30%, var(--mk-mark) 90%, transparent 90%);
   color: inherit; padding: 0 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone;

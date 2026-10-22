@@ -123,6 +123,7 @@ section { padding-block: 56px 8px; }
 .report-stats div { background: var(--soft); border-radius: 10px; padding: 8px 10px; }
 .report-stats b { display: block; font-family: var(--display); font-size: 24px; line-height: 1.2; }
 .report-stats span { font-size: 12.5px; color: var(--muted); }
+.report-stats b.txt { font-family: var(--body); font-weight: 600; font-size: 15px; line-height: 1.35; padding-block: 4px; }
 .gap { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
 .gap:last-child { border-bottom: 0; }
 .gap small { color: var(--muted); white-space: nowrap; }
@@ -327,7 +328,7 @@ footer { margin-top: 56px; border-top: 1px solid var(--line); padding-block: 22p
         <div class="report-stats">
           <div><b id="r-total">–</b><span>שאלות נשאלו</span></div>
           <div><b id="r-gap">–</b><span>בלי תשובה באתר</span></div>
-          <div><b id="r-topic">–</b><span>האזור שחסר בו הכי הרבה</span></div>
+          <div><b id="r-topic" class="txt">–</b><span>האזור שחסר בו הכי הרבה</span></div>
         </div>
         <div id="r-recent"><p class="skeleton">טוען…</p></div>
       </div>

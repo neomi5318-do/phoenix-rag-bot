@@ -313,8 +313,9 @@ def answer(question, history, chunks):
             and not PERSONAL.search(question):
         status = "answered"                         # "יש לי נזילה, איך מגישים?" / "יש לי מחלה כרונית,
                                                     # אפשר לקנות?" = שאלה כללית, גם כשמספרים על עצמך
-    if status == "answered" and PERSONAL.search(question):
-        status = "personal"                         # מידע כללי מהאתר + כרטיס המוקד לבדיקה אישית
+    if status in ("answered", "not_found") and PERSONAL.search(question):
+        status = "personal"                         # שאלה על הפוליסה / התביעה של הלקוח - תמיד למוקד,
+                                                    # עם המידע הכללי מהאתר אם יש (כמו בתסריט של האתגר)
     if status == "answered" and not sources:        # אין מקור -> אין תשובה
         status, text = "not_found", NOT_FOUND
     if status == "personal" and is_hebrew(text):

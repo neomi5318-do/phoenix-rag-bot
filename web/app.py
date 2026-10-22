@@ -54,7 +54,8 @@ def ask():
 
     if request.method == "GET":                      # חימום
         retrieval.load_data()
-        return jsonify(ready=True, version=VERSION, ms=int((time.time() - t) * 1000))
+        keys = sum(1 for k in ("GEMINI_API_KEY", "GEMINI_API_KEY_2", "GROQ_API_KEY") if os.getenv(k))
+        return jsonify(ready=True, version=VERSION, keys=keys, ms=int((time.time() - t) * 1000))   # כמה מפתחות מוגדרים (רק המספר)
 
     try:
         body = request.get_json(silent=True) or {}

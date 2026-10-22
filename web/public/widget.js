@@ -268,7 +268,7 @@
       '  <div class="mk-title"><b>שירות דיגיטלי</b>' +
       '    <span class="mk-status" data-state="warming" role="status"><span class="mk-dot"></span><span class="mk-status-text">מתחבר…</span></span></div>' +
       '  <div class="mk-head-actions">' +
-      '    <button class="mk-icon-btn mk-faq-btn" type="button" aria-pressed="false" aria-label="שאלות נפוצות" title="שאלות נפוצות">' + ICON.book + "</button>" +
+      '    <button class="mk-faq-btn" type="button" aria-pressed="false">' + ICON.book + "<span>שאלות נפוצות</span></button>" +
       '    <button class="mk-icon-btn mk-reset" type="button" aria-label="שיחה חדשה" title="שיחה חדשה">' + ICON.reset + "</button>" +
       '    <button class="mk-icon-btn mk-close" type="button" aria-label="סגירה" title="סגירה" hidden>' + ICON.close + "</button>" +
       "  </div>" +

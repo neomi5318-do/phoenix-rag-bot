@@ -83,6 +83,23 @@
 }
 .mk-icon-btn:hover { background: var(--mk-soft); color: var(--mk-ink); }
 .mk-icon-btn[aria-pressed="true"] { background: var(--mk-ink); color: var(--mk-bg); }
+.mk-faq-btn {                  /* "שאלות נפוצות" - כפתור עם מילים, כדי שיהיה ברור מה הוא עושה */
+  display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--mk-ink); background: var(--mk-bg); border: 1px solid var(--mk-line); border-radius: 999px;
+  padding: 6px 12px; cursor: pointer; white-space: nowrap; margin-inline-end: 4px; transition: border-color .15s;
+}
+.mk-faq-btn svg { width: 16px; height: 16px; color: var(--mk-accent); }
+.mk-faq-btn:hover { border-color: var(--mk-accent); }
+.mk-faq-btn[aria-pressed="true"] { background: var(--mk-ink); color: var(--mk-bg); border-color: var(--mk-ink); }
+.mk-faq-btn[aria-pressed="true"] svg { color: inherit; }
+.mk-title b { white-space: nowrap; }
+@media (max-width: 520px) {     /* בטלפון: הכל בשורה אחת בכותרת */
+  .mk-head { gap: 8px; padding: 12px; }
+  .mk-head .mk-orb { width: 36px; height: 36px; }
+  .mk-faq-btn { padding: 5px 10px; font-size: 12.5px; margin-inline-end: 0; }
+  .mk-icon-btn { width: 32px; height: 32px; }
+}
+@media (max-width: 350px) { .mk-faq-btn span { display: none; } }
 .mk-icon-btn svg { width: 19px; height: 19px; }
 
 /* ---------- הסמל המונפש: נח / קורא / עונה ---------- */

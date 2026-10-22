@@ -78,7 +78,7 @@ def record(question, result, area=""):
     status = result.get("status", "")
     cmds = [("INCR", f"{PREFIX}:total"), ("INCR", f"{PREFIX}:status:{status}")]
     if status == "not_found":
-        item = {"q": mask(question)[:300], "topic": AREAS.get(area, area or "כללי"),
+        item = {"q": mask(question)[:300], "topic": AREAS.get(area, "כללי"),
                 "ts": int(time.time())}
         cmds += [("LPUSH", KEY, json.dumps(item, ensure_ascii=False)), ("LTRIM", KEY, 0, MAX_KEEP - 1)]
     try:
@@ -96,6 +96,10 @@ def report():
         ("GET", f"{PREFIX}:status:not_found"), ("GET", f"{PREFIX}:status:personal"),
         ("LRANGE", KEY, 0, MAX_KEEP - 1))
     gaps = [json.loads(x) for x in raw or []]
+    known = set(AREAS.values())
+    for g in gaps:                                   # אזור שלא ברשימה (למשל קטגוריה פנימית באתר) -> "כללי"
+        if g.get("topic") not in known:
+            g["topic"] = "כללי"
     topics = Counter(g.get("topic") or "כללי" for g in gaps)
     return {
         "enabled": True,

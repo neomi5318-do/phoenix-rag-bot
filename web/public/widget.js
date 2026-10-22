@@ -1,15 +1,16 @@
 /*
-  מקור - ווידג'ט הצ'אט.
+  ווידג'ט הצ'אט לאתר הפניקס.
 
   הטמעה בכל אתר בשורה אחת:
-    <script src="https://<הכתובת>/widget.js" data-color="#e8572a" defer></script>
-  -> מופיעה בועת צ'אט בפינה. אפשר גם להציג את הצ'אט בתוך הדף: data-mount="#מזהה".
+    <script src="https://<הכתובת>/widget.js" defer></script>
+  -> מופיעה בועת צ'אט בפינה. אפשרויות: data-color="#..." (צבע מותג),
+     data-open="auto" (החלון נפתח לבד), data-mount="#מזהה" (הצ'אט בתוך הדף במקום בועה).
 
   מבנה הקובץ:
     עזרים            - יצירת אלמנטים, עיצוב טקסט, קישור מדגיש, "פתוח עכשיו"
     Chat             - חלון הצ'אט: שליחת שאלה ל-/api/ask והצגת התשובה
     שאלות נפוצות     - תשובות שהוכנו ונבדקו מראש (faq.json)
-    הרכבה בדף        - בתוך הדף או כבועה צפה
+    הרכבה בדף        - בועה צפה בפינה, או בתוך הדף
 */
 (function () {
   "use strict";
@@ -26,7 +27,6 @@
   }
 
   var ICON = {
-    logo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10.5h8" stroke-width="3.2" opacity=".55"/></svg>',
     send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
     close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></svg>',
@@ -38,13 +38,15 @@
     ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>'
   };
 
-  // הצעות לשאלות בפתיחה - עוברות דרך הבוט האמיתי, כמו שאלה שמקלידים
-  var SUGGESTIONS = [
-    "יש לי נזילה בבית, איך אני מגישה תביעה?",
-    "מה ההשתתפות העצמית בביטוח לכלב?",
-    "מה ההבדל בין ביטוח מקיף לביטוח צד ג'?",
-    "Какая франшиза в страховке для собаки?"
-  ];
+  // הסמל המונפש: עיגול בצבע המותג עם שלוש "שורות טקסט".
+  // נח = נושם בעדינות · קורא = מרקר צהוב עובר על השורות · עונה = השורות "נכתבות"
+  function orb(cls) {
+    return '<span class="mk-orb' + (cls ? " " + cls : "") + '" data-state="idle" aria-hidden="true">' +
+      '<svg viewBox="0 0 24 24"><rect class="hl h1" x="4" y="6" width="16" height="3" rx="1.5"/>' +
+      '<rect class="hl h2" x="9" y="10.5" width="11" height="3" rx="1.5"/><rect class="hl h3" x="6" y="15" width="14" height="3" rx="1.5"/>' +
+      '<rect class="ln l1" x="4" y="6" width="16" height="3" rx="1.5"/><rect class="ln l2" x="9" y="10.5" width="11" height="3" rx="1.5"/>' +
+      '<rect class="ln l3" x="6" y="15" width="14" height="3" rx="1.5"/></svg></span>';   // שורות מיושרות לימין, כמו עברית
+  }
 
   // כיתובים לפי שפת התשובה (הבוט עונה בשפה שבה שאלו)
   var LABELS = {
@@ -75,7 +77,7 @@
   var SPEECH_LANG = { he: "he-IL", ru: "ru-RU", ar: "ar-SA", en: "en-US", am: "am-ET" };
 
   // מה כתוב מתחת לאנימציה בזמן שהבוט עובד
-  var THINKING = ["קורא באתר הפניקס…", "מסמן את המשפט הנכון…", "מנסח תשובה ברורה…"];
+  var THINKING = ["קורא באתר הפניקס…", "מאתר את המשפט המדויק…", "מנסח תשובה…"];
 
   // ---------- עזרים ----------
   function el(tag, cls, html) {
@@ -259,12 +261,11 @@
     var self = this;
     var panel = el("div", "mk-panel");
     panel.innerHTML =
-      '<div class="mk-head">' +
-      '  <div class="mk-logo" aria-hidden="true">' + ICON.logo + "</div>" +
-      '  <div class="mk-title"><b>מקור</b>' +
+      '<div class="mk-head">' + orb() +
+      '  <div class="mk-title"><b>שירות דיגיטלי</b>' +
       '    <span class="mk-status" data-state="warming" role="status"><span class="mk-dot"></span><span class="mk-status-text">מתחבר…</span></span></div>' +
       '  <div class="mk-head-actions">' +
-      '    <button class="mk-faq-btn" type="button" aria-pressed="false">' + ICON.book + "<span>שאלות נפוצות</span></button>" +
+      '    <button class="mk-icon-btn mk-faq-btn" type="button" aria-pressed="false" aria-label="שאלות נפוצות" title="שאלות נפוצות">' + ICON.book + "</button>" +
       '    <button class="mk-icon-btn mk-reset" type="button" aria-label="שיחה חדשה" title="שיחה חדשה">' + ICON.reset + "</button>" +
       '    <button class="mk-icon-btn mk-close" type="button" aria-label="סגירה" title="סגירה" hidden>' + ICON.close + "</button>" +
       "  </div>" +
@@ -275,11 +276,11 @@
       "</div>" +
       '<form class="mk-form">' +
       '  <div class="mk-row">' +
-      '    <textarea class="mk-input" aria-label="השאלה שלך" rows="1" placeholder="מה תרצו לדעת?"></textarea>' +
+      '    <textarea class="mk-input" aria-label="השאלה שלך" rows="1" placeholder="כתבו שאלה…"></textarea>' +
       '    <button class="mk-mic" type="button" aria-label="לשאול בקול" title="לשאול בקול" hidden>' + ICON.mic + "</button>" +
       '    <button class="mk-send" type="submit" aria-label="שליחה">' + ICON.send + "</button>" +
       "  </div>" +
-      '  <div class="mk-note">עונה רק ממידע ציבורי באתר הפניקס · אין לשתף פרטים אישיים</div>' +
+      '  <div class="mk-note">התשובות מבוססות על המידע הציבורי באתר הפניקס · אין לשתף פרטים אישיים</div>' +
       "</form>";
     this.root.appendChild(panel);
 
@@ -290,6 +291,7 @@
     this.sendBtn = panel.querySelector(".mk-send");
     this.statusEl = panel.querySelector(".mk-status");
     this.closeBtn = panel.querySelector(".mk-close");
+    this.orbs = [panel.querySelector(".mk-head .mk-orb")];
 
     panel.querySelector(".mk-form").addEventListener("submit", function (e) {
       e.preventDefault(); self.ask(self.input.value);
@@ -326,27 +328,22 @@
       rec.onerror = function () { self.input.placeholder = "לא הצלחתי לשמוע. אפשר לנסות שוב או להקליד."; };
       rec.onend = function () {
         btn.classList.remove("is-on"); rec = null;
-        if (self.input.placeholder.indexOf("מקשיב") === 0) self.input.placeholder = "מה תרצו לדעת?";
+        if (self.input.placeholder.indexOf("מקשיב") === 0) self.input.placeholder = "כתבו שאלה…";
       };
       rec.start();
     });
   };
 
   Chat.prototype.welcome = function () {
-    var self = this;
-    var box = el("div", "mk-msg mk-bot");
-    box.appendChild(el("div", "mk-bubble",
-      "<p><b>שלום!</b> אני עונה רק ממה שכתוב באתר הפניקס, ומראה לכם בדיוק איפה זה כתוב.</p>" +
-      '<p class="mk-langs">אפשר לשאול גם ב: <span dir="ltr">Русский · العربية · English</span>' +
-      (Recognition ? " · או בקול 🎤" : "") + "</p>"));
-    var chips = el("div", "mk-suggest");
-    SUGGESTIONS.forEach(function (q) {
-      var b = el("button", "mk-chip", esc(q)); b.type = "button"; b.setAttribute("dir", "auto");
-      b.addEventListener("click", function () { self.ask(q); });
-      chips.appendChild(b);
-    });
-    box.appendChild(chips);
+    var box = el("div", "mk-msg mk-hello");
+    box.innerHTML = orb() + "<h3>שלום, איך אפשר לעזור?</h3>" +
+      "<p>אפשר לשאול כל שאלה על ביטוח, תביעות, פנסיה וחיסכון. התשובה מגיעה מתוך אתר הפניקס, עם קישור למקור.</p>";
     this.log.appendChild(box);
+  };
+
+  // מצב הסמל המונפש (בכותרת ובבועה): idle / reading / answering
+  Chat.prototype.setState = function (state) {
+    this.orbs.forEach(function (o) { if (o) o.dataset.state = state; });
   };
 
   Chat.prototype.reset = function () {
@@ -367,19 +364,21 @@
       .catch(function () { self.setStatus("ready", "מוכן לשאלות"); });
   };
 
-  Chat.prototype.scroll = function () { this.log.scrollTop = this.log.scrollHeight; };
+  // גלילה למטה - רק אם הלקוחה כבר למטה (לא "חוטפים" לה את המסך אם גללה למעלה לקרוא)
+  Chat.prototype.scroll = function (force) {
+    var log = this.log, near = log.scrollHeight - log.scrollTop - log.clientHeight < 120;
+    if (force || near) log.scrollTop = log.scrollHeight;
+  };
 
-  // אנימציית "מרקר" בזמן שהבוט עובד
+  // "חושב": סמל קטן שקורא, וטקסט מנצנץ שמתחלף
   Chat.prototype.thinking = function () {
-    var box = el("div", "mk-thinking");
-    box.innerHTML =
-      '<div class="mk-lines" aria-hidden="true"><i></i><i></i><i></i></div>' +
-      '<div class="mk-thinking-text">' + THINKING[0] + "</div>";
+    var box = el("div", "mk-thinking", orb("sm") + '<span class="mk-thinking-text">' + THINKING[0] + "</span>");
+    box.querySelector(".mk-orb").dataset.state = "reading";
     var text = box.querySelector(".mk-thinking-text"), i = 0;
     var timer = setInterval(function () {
       i = Math.min(i + 1, THINKING.length - 1);
       text.textContent = THINKING[i];
-    }, 1800);
+    }, 1900);
     box.stop = function () { clearInterval(timer); box.remove(); };
     return box;
   };
@@ -394,7 +393,9 @@
 
     var user = el("div", "mk-msg mk-user"); user.textContent = question; user.setAttribute("dir", "auto");
     this.log.appendChild(user);
+    this.scroll(true);
     var bot = el("div", "mk-msg mk-bot");
+    this.setState("reading");
     var wait = this.thinking();
     bot.appendChild(wait);
     this.log.appendChild(bot);
@@ -412,12 +413,12 @@
       })
       .then(function (result) {
         wait.stop();
-        self.showAnswer(bot, result);
         self.history.push({ q: question, a: result.answer,     // + העמודים שמהם ענינו - לשאלת המשך
           urls: (result.sources || []).map(function (s) { return s.url; }) });
+        return self.showAnswer(bot, result);
       })
       .catch(function (err) {
-        wait.stop();
+        wait.stop(); self.setState("idle");
         var e = el("div", "mk-bubble");
         e.appendChild(el("p", "mk-error", esc(err.message || "תקלה זמנית. נסו שוב.")));
         var retry = el("button", "mk-retry", "לנסות שוב"); retry.type = "button";
@@ -430,7 +431,9 @@
       });
   };
 
+  // התשובה: תג סטטוס, הטקסט נכתב מול העיניים, ואחריו - טבלה, רשימה, מקורות ומוקד, בזה אחר זה
   Chat.prototype.showAnswer = function (bot, r) {
+    var self = this;
     var lang = langOf(r.answer), L = labels(lang);
     var top = el("div", "mk-answer-top");
     top.appendChild(el("span", "mk-badge " + r.status, esc(L[r.status] || "")));
@@ -440,12 +443,52 @@
 
     var bubble = el("div", "mk-bubble");
     bot.appendChild(bubble);
-    this.reveal(bubble, formatAnswer(r.answer));
-    if (r.table) bot.appendChild(tableBlock(r.table));
-    if (r.checklist) bot.appendChild(checklistBlock(r.checklist, L));
-    if (r.sources && r.sources.length) bot.appendChild(sourcesBlock(r.sources, L));
-    if (r.department) bot.appendChild(this.deptBlock(r.department, r.status !== "answered", L));
-    this.scroll();
+    var extras = [];
+    if (r.table) extras.push(tableBlock(r.table));
+    if (r.checklist) extras.push(checklistBlock(r.checklist, L));
+    if (r.sources && r.sources.length) extras.push(sourcesBlock(r.sources, L));
+    if (r.department) extras.push(this.deptBlock(r.department, r.status !== "answered", L));
+
+    this.setState("answering");
+    return this.typeOut(bubble, formatAnswer(r.answer)).then(function () {
+      extras.forEach(function (x, i) {
+        x.classList.add("mk-stage"); x.style.animationDelay = (i * 0.12) + "s";
+        bot.appendChild(x);
+      });
+      self.setState("idle");
+      self.scroll(true);
+    });
+  };
+
+  // הקלדה מול העיניים: כל פסקה / פריט נכתבים מילה אחרי מילה, ובסוף מקבלים את העיצוב המלא.
+  // (התשובה כבר הגיעה מהשרת - זו רק הצגה. מי שביקש "הפחתת תנועה" מקבל אותה מיד.)
+  Chat.prototype.typeOut = function (bubble, html) {
+    var self = this;
+    bubble.innerHTML = html;
+    if (reduceMotion) return Promise.resolve();
+    var blocks = Array.prototype.slice.call(bubble.querySelectorAll("p, li"));
+    var jobs = blocks.map(function (b) {
+      var full = b.innerHTML, words = b.textContent.split(/(\s+)/);
+      b.textContent = "";
+      return { el: b, full: full, words: words };
+    });
+    var caret = el("span", "mk-caret");
+    return jobs.reduce(function (prev, job) {
+      return prev.then(function () {
+        return new Promise(function (done) {
+          var i = 0;
+          job.el.appendChild(caret);
+          (function step() {
+            var chunk = "";
+            for (var k = 0; k < 2 && i < job.words.length; k++) chunk += job.words[i++];   // 2 מילים בכל צעד
+            caret.insertAdjacentText("beforebegin", chunk);
+            self.scroll();
+            if (i < job.words.length) setTimeout(step, 28);
+            else { job.el.innerHTML = job.full; done(); }
+          })();
+        });
+      });
+    }, Promise.resolve());
   };
 
   // בשאלה אישית / כשאין תשובה: הכרטיס פתוח. בתשובה רגילה: שורה קטנה שנפתחת בלחיצה
@@ -457,16 +500,6 @@
     btn.addEventListener("click", function () { mini.replaceWith(deptCard(d)); self.scroll(); });
     mini.appendChild(btn);
     return mini;
-  };
-
-  // חשיפה הדרגתית של התשובה (מכבדים "הפחתת תנועה")
-  Chat.prototype.reveal = function (bubble, html) {
-    bubble.innerHTML = html;
-    if (reduceMotion) return;
-    Array.prototype.forEach.call(bubble.querySelectorAll("p, li"), function (n, i) {
-      n.style.opacity = "0"; n.style.transition = "opacity .35s ease";
-      setTimeout(function () { n.style.opacity = "1"; }, 80 + i * 130);
-    });
   };
 
   // ---------- שאלות נפוצות: תשובות שהוכנו ונבדקו מראש ----------
@@ -518,48 +551,50 @@
   };
 
   // ---------- הרכבה בדף ----------
+  // בועה בפינה (כמו באתרים אמיתיים). data-open="auto": החלון נפתח לבד אחרי רגע (במחשב),
+  // ובטלפון מופיעה רק בועית "יש לך שאלה?" - כדי לא להסתיר את כל המסך.
   function mountFloating() {
-    var launcher = el("button", "mk mk-launcher", ICON.logo);
-    launcher.type = "button"; launcher.setAttribute("aria-label", "פתיחת עוזר המידע");
+    var launcher = el("button", "mk mk-auto-theme mk-launcher", orb());
+    launcher.type = "button"; launcher.setAttribute("aria-label", "פתיחת הצ'אט");
+    launcher.setAttribute("aria-expanded", "false");
     if (opts.color) launcher.style.setProperty("--mk-accent", opts.color);
     var box = el("div", "mk-float"); box.hidden = true;
     document.body.appendChild(launcher); document.body.appendChild(box);
-    var chat = null;
+    var chat = null, tip = null;
+    function hideTip() { if (tip) { tip.remove(); tip = null; } }
     function toggle(show) {
+      hideTip();
       box.hidden = !show;
       launcher.setAttribute("aria-expanded", String(show));
+      document.documentElement.classList.toggle("mk-chat-open", show);   // הדף יכול לפנות מקום לחלון
       if (show && !chat) {
         chat = new Chat(box);
+        chat.orbs.push(launcher.querySelector(".mk-orb"));
         chat.closeBtn.hidden = false;
         chat.closeBtn.addEventListener("click", function () { toggle(false); launcher.focus(); });
       }
-      if (show) chat.input.focus();
+      if (show) {
+        box.style.animation = "none"; void box.offsetWidth; box.style.animation = "";   // אנימציית פתיחה בכל פעם
+        if (window.innerWidth > 520) chat.input.focus();
+      }
     }
     launcher.addEventListener("click", function () { toggle(box.hidden); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !box.hidden) toggle(false); });
+
+    if (opts.open === "auto") {
+      setTimeout(function () {
+        if (window.innerWidth > 520) { toggle(true); return; }
+        tip = el("div", "mk mk-auto-theme mk-tip", "יש לך שאלה? אפשר לשאול כאן");
+        tip.addEventListener("click", function () { toggle(true); });
+        document.body.appendChild(tip);
+      }, 900);
+    }
     return { open: function () { toggle(true); } };
-  }
-
-  // התסריט מהאתגר - לכפתור "להריץ את התסריט" ולהדגמה על הבמה
-  var SCRIPT = ["יש לי נזילה בבית, איך אני מגישה תביעה?", "ותוך כמה זמן מקבלים תשובה?",
-                "האם הפוליסה שלי מכסה את זה?"];
-
-  // בצ'אט שבתוך הדף: ?q=שאלה שואל אותה מיד, ?demo=script מריץ את התסריט שאלה אחרי שאלה
-  function autoplay(chat) {
-    var p = new URLSearchParams(location.search);
-    var list = p.get("demo") === "script" ? SCRIPT : (p.get("q") ? [p.get("q").slice(0, 300)] : []);
-    list.reduce(function (prev, q) {
-      return prev.then(function () {
-        return new Promise(function (ok) { setTimeout(ok, 700); }).then(function () { return chat.ask(q); });
-      });
-    }, Promise.resolve());
   }
 
   function start() {
     var target = opts.mount && document.querySelector(opts.mount);
-    if (!target) { window.Makor = mountFloating(); return; }
-    window.Makor = { chat: new Chat(target) };
-    autoplay(window.Makor.chat);
+    window.Makor = target ? { chat: new Chat(target) } : mountFloating();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();

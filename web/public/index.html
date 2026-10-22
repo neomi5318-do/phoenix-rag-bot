@@ -3,108 +3,639 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>מקור · עוזר המידע לאתר הפניקס</title>
-<meta name="description" content="שואלים על ביטוח, תביעות וחיסכון, ומקבלים תשובה רק מתוך אתר הפניקס, עם המשפט המדויק שעליו היא נשענת.">
+<title>צ'אט לאתר הפניקס · פרויקט האקתון</title>
+<meta name="description" content="בוט שעונה ללקוחות הפניקס רק מתוך האתר, מדגיש את המשפט המדויק שעליו התשובה נשענת, מפנה למוקד הנכון, ומראה לצוות התוכן מה חסר באתר.">
 <link rel="preload" href="fonts/rubik-hebrew-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/suez-one-hebrew-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="widget.css" data-mk-css>
 <style>
-/* layout: תצוגת לקוח - שורת כותרת, פתיח קצר, והצ'אט ממלא את שאר המסך */
+/* layout: דף אחד לפניקס - פתיח, "שורה אחת באתר שלכם", מה הלקוחות מקבלים, הפיצ'ר המקורי,
+   למה אפשר לסמוך עליו (מקופל), ואיך זה בנוי. הצ'אט עצמו חי בבועה בפינה. */
 :root {
-  --bg: #f4f6fa; --surface: #ffffff; --ink: #172033; --muted: #5f6b7d; --line: #e1e6ee;
-  --accent: #e8572a; --mark: #ffe066;
+  --bg: #f4f6fa; --surface: #ffffff; --ink: #172033; --muted: #5f6b7d; --line: #e1e6ee; --soft: #eef1f6;
+  --accent: #e8572a; --mark: #ffe066; --ok: #0f7b62; --ok-bg: #e2f4ee; --bad: #b23b2e; --bad-bg: #fbe7e4;
+  --nf: #5a6378; --nf-bg: #eceff5; --pe: #8a5300; --pe-bg: #fdf0d6;
+  --code-bg: #172033; --code-ink: #e9edf5;
   --display: "Suez One", "Rubik", Georgia, serif;
   --body: "Rubik", "Assistant", system-ui, "Segoe UI", Arial, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #0f1420; --surface: #151b28; --ink: #e9edf5; --muted: #a3adbf; --line: #262e40; --mark: #6b5a12; color-scheme: dark; } }
+  --bg: #0f1420; --surface: #151b28; --ink: #e9edf5; --muted: #a3adbf; --line: #262e40; --soft: #1b2232; --mark: #6b5a12;
+  --ok: #6fd3b5; --ok-bg: #133229; --bad: #ff8f80; --bad-bg: #3a1c19; --nf: #b7bfd1; --nf-bg: #252d3e; --pe: #f3c46b; --pe-bg: #3a2c12;
+  --code-bg: #0a0e17; color-scheme: dark; } }
 :root[data-theme="dark"] {
-  --bg: #0f1420; --surface: #151b28; --ink: #e9edf5; --muted: #a3adbf; --line: #262e40; --mark: #6b5a12; color-scheme: dark; }
+  --bg: #0f1420; --surface: #151b28; --ink: #e9edf5; --muted: #a3adbf; --line: #262e40; --soft: #1b2232; --mark: #6b5a12;
+  --ok: #6fd3b5; --ok-bg: #133229; --bad: #ff8f80; --bad-bg: #3a1c19; --nf: #b7bfd1; --nf-bg: #252d3e; --pe: #f3c46b; --pe-bg: #3a2c12;
+  --code-bg: #0a0e17; color-scheme: dark; }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; overflow-x: clip; }
-body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6;
-  min-height: 100dvh; display: flex; flex-direction: column; }
+html { scroll-behavior: smooth; scroll-padding-top: 70px; overflow-x: clip; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16.5px; line-height: 1.65; overflow-x: clip; }
 a { color: inherit; }
-.wrap { width: 100%; max-width: 860px; margin: 0 auto;
+.wrap { max-width: 1080px; margin: 0 auto;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; line-height: 1.18; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.hl { background: linear-gradient(transparent 55%, var(--mark) 55%, var(--mark) 92%, transparent 92%); }
+mark { background: var(--mark); color: inherit; padding: 0 .1em; border-radius: 2px; }
 
-/* שורת כותרת */
+/* כותרת */
 .top { display: flex; align-items: center; gap: 10px 14px; padding-block: 14px; flex-wrap: wrap; }
 .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 17px; text-decoration: none; }
 .brand-mark { width: 32px; height: 32px; border-radius: 10px; background: var(--accent); color: #fff; display: grid; place-items: center; }
 .brand-mark svg { width: 19px; height: 19px; }
-.brand small { font-weight: 400; color: var(--muted); font-size: 14px; }
 .pill { font-size: 12.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
-.team-link { margin-inline-start: auto; font-size: 14.5px; font-weight: 500; text-decoration: none; color: var(--ink);
-  border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; white-space: nowrap; }
-.team-link:hover { border-color: var(--ink); }
+.btn { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 600; font-size: 15.5px;
+  border-radius: 12px; padding: 10px 18px; border: 1px solid var(--line); background: var(--surface); white-space: nowrap; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn:hover { filter: brightness(1.05); border-color: var(--ink); }
+.btn.primary:hover { border-color: var(--accent); }
+.top .btn { margin-inline-start: auto; padding: 6px 14px; font-size: 14.5px; font-weight: 500; border-radius: 999px; }
 
 /* פתיח */
-.intro { padding-block: 10px 18px; display: flex; flex-direction: column; gap: 10px; }
-h1 { font-family: var(--display); font-weight: 400; font-size: clamp(28px, 4.6vw, 44px); line-height: 1.15; margin: 0; text-wrap: balance; }
-.hl { background: linear-gradient(transparent 55%, var(--mark) 55%, var(--mark) 92%, transparent 92%) no-repeat; background-size: 100% 100%; }
-@media (prefers-reduced-motion: no-preference) {
-  .hl { animation: sweep 1s .4s cubic-bezier(.2, .7, .2, 1) both; background-position: right; }
-  @keyframes sweep { from { background-size: 0 100%; } to { background-size: 100% 100%; } }
+.hero { padding-block: 26px 30px; display: flex; flex-direction: column; gap: 16px; max-width: 900px; }
+.eyebrow { color: var(--accent); font-weight: 600; font-size: 14px; }
+.hero h1 { font-size: clamp(32px, 5vw, 54px); }
+.challenge { border-inline-start: 4px solid var(--mark); padding: 4px 16px; font-size: 18px; color: var(--ink); }
+.challenge small { display: block; color: var(--muted); font-size: 14px; }
+.hero .lede { color: var(--muted); font-size: 17.5px; max-width: 46em; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 8px; }
+.fact { border-top: 3px solid var(--ink); padding-top: 10px; }
+.fact b { display: block; font-family: var(--display); font-size: 34px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.fact span { color: var(--muted); font-size: 14.5px; }
+
+/* ניווט דביק */
+.toc { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.toc ol { list-style: none; margin: 0 auto; padding-block: 10px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.toc a { display: block; white-space: nowrap; text-decoration: none; font-size: 14.5px; color: var(--muted); padding: 5px 12px; border-radius: 999px; }
+.toc a:hover, .toc a.on { color: var(--ink); background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
+
+/* פרקים */
+section { padding-block: 56px 8px; }
+.sec-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; max-width: 760px; }
+.sec-head .num { font-family: var(--display); color: var(--accent); font-size: 15px; }
+.sec-head h2 { font-size: clamp(27px, 3.4vw, 38px); }
+.sec-head p { color: var(--muted); font-size: 17px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
+
+/* 1. התסריט */
+.turn { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 14px; margin-bottom: 18px; align-items: start; }
+.ask { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; }
+.ask .who { font-size: 13px; color: var(--muted); flex: none; }
+.ask .bubble { background: var(--ink); color: var(--bg); border-radius: 16px 16px 4px 16px; padding: 8px 16px; font-weight: 500; }
+.expect { background: var(--soft); border: 1px dashed var(--line); }
+.label { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.expect p { font-size: 15.5px; }
+.got { position: relative; }
+.badge { display: inline-block; font-size: 12.5px; font-weight: 600; border-radius: 999px; padding: 1px 10px; }
+.badge.answered { background: var(--ok-bg); color: var(--ok); }
+.badge.not_found { background: var(--nf-bg); color: var(--nf); }
+.badge.personal { background: var(--pe-bg); color: var(--pe); }
+.got .text p + p { margin-top: 6px; }
+.src { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 14.5px; display: flex; flex-direction: column; gap: 4px; }
+.src a { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
+.verdict { display: flex; align-items: center; gap: 6px; color: var(--ok); font-weight: 600; font-size: 14px; margin-top: 10px; }
+.recorded { color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+
+/* 2. הכללים */
+.rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.rule { display: flex; flex-direction: column; gap: 10px; }
+.rule h3 { font-size: 22px; }
+.rule blockquote { margin: 0; color: var(--muted); font-size: 15px; border-inline-start: 3px solid var(--line); padding-inline-start: 10px; }
+.rule h4 { margin: 4px 0 0; font-size: 13.5px; color: var(--muted); font-weight: 600; }
+.rule ul { margin: 0; padding-inline-start: 18px; font-size: 15px; display: flex; flex-direction: column; gap: 4px; }
+.rule .code-way li::marker { content: "✓  "; color: var(--ok); font-weight: 700; }
+
+/* 3. הפיצ'ר */
+.feature { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: stretch;
+  background: var(--ink); color: var(--bg); border-radius: 20px; padding: 28px; }
+.feature .tag { align-self: flex-start; font-size: 12.5px; font-weight: 600; color: var(--ink); background: var(--mark); border-radius: 999px; padding: 1px 10px; }
+.feature-text { display: flex; flex-direction: column; gap: 14px; }
+.feature h3 { font-size: clamp(26px, 3vw, 34px); }
+.feature p { opacity: .88; }
+.feature ol { margin: 0; padding-inline-start: 20px; opacity: .92; display: flex; flex-direction: column; gap: 4px; }
+.feature .btn { align-self: flex-start; }
+.report { background: var(--surface); color: var(--ink); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.report-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.report-stats div { background: var(--soft); border-radius: 10px; padding: 8px 10px; }
+.report-stats b { display: block; font-family: var(--display); font-size: 24px; line-height: 1.2; }
+.report-stats span { font-size: 12.5px; color: var(--muted); }
+.report-stats b.txt { font-family: var(--body); font-weight: 600; font-size: 15px; line-height: 1.35; padding-block: 4px; }
+.gap { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.gap:last-child { border-bottom: 0; }
+.gap small { color: var(--muted); white-space: nowrap; }
+.report .live { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.on { background: var(--ok); }
+.more { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.more .card { display: flex; flex-direction: column; gap: 8px; }
+.more h3 { font-size: 21px; }
+.more p { color: var(--muted); font-size: 15.5px; }
+.demo-hl { font-size: 14px; background: var(--soft); border-radius: 10px; padding: 10px 12px; color: var(--muted); }
+.demo-hl .url { direction: ltr; text-align: left; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; display: block; margin-bottom: 6px; }
+.extras { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.chip { font-size: 14.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px 14px; }
+
+/* 4. הבדיקות */
+.tip { display: flex; gap: 12px; align-items: flex-start; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; }
+.tip b { font-family: var(--display); font-weight: 400; font-size: 18px; }
+.by-type { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.type-tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; cursor: pointer; text-align: start; font: inherit; color: inherit; }
+.type-tile[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.type-tile b { display: block; font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.type-tile span { color: var(--muted); font-size: 14px; }
+.lessons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+.lesson { display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.lesson .was { color: var(--bad); font-size: 13.5px; font-weight: 600; }
+.lesson .now { color: var(--ok); font-size: 13.5px; font-weight: 600; margin-top: 2px; }
+.qlist { display: flex; flex-direction: column; gap: 8px; }
+.q { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.q summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 14px; }
+.q summary::-webkit-details-marker { display: none; }
+.q .mark-ok { color: var(--ok); font-weight: 700; font-size: 18px; text-align: center; }
+.q .mark-bad { color: var(--bad); font-weight: 700; font-size: 18px; text-align: center; }
+.q .ctx { display: block; color: var(--muted); font-size: 13px; }
+.q .q-body { padding: 0 14px 14px 14px; padding-inline-start: 52px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
+.q .exp { color: var(--muted); font-size: 14px; }
+.q .ans { background: var(--soft); border-radius: 10px; padding: 10px 12px; white-space: pre-line; }
+.q .src a { font-size: 13px; }
+.q-meta { display: flex; gap: 8px; align-items: center; }
+.q-meta small { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* 5. ארכיטקטורה */
+.lane { margin-bottom: 18px; }
+.lane-name { font-size: 14px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+.flow { display: flex; align-items: stretch; gap: 0; flex-wrap: nowrap; }
+.node { flex: 1 1 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 14px; display: flex; flex-direction: column; gap: 2px; }
+.node b { font-size: 15px; }
+.node small { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.node.key { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent); }
+.arrow { flex: none; width: 26px; display: grid; place-items: center; color: var(--muted); font-size: 18px; }
+.branch { display: flex; justify-content: flex-start; gap: 10px; align-items: center; margin-top: 8px; font-size: 14px; color: var(--muted); padding-inline-start: 6px; }
+.branch .node { flex: none; max-width: 340px; }
+.arch-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-top: 10px; }
+.edge { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 15px; }
+.edge li b { display: block; }
+.edge li span { color: var(--muted); font-size: 14.5px; }
+.stack { display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.stack div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.stack div:last-child { border-bottom: 0; }
+.stack span { color: var(--muted); }
+
+/* 6. הטמעה */
+.embed { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.code { position: relative; background: var(--code-bg); color: var(--code-ink); border-radius: 12px; padding: 16px; padding-left: 86px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 13px; direction: ltr; text-align: left; overflow-x: auto; white-space: nowrap; }
+.code .attr { color: #ffb38f; } .code .str { color: #9fe0c4; }
+.copy { position: absolute; top: 10px; left: 10px; font: inherit; font-family: var(--body); font-size: 13px; border: 1px solid rgba(255, 255, 255, .25); background: transparent; color: var(--code-ink); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.embed ul { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 15.5px; }
+
+footer { margin-top: 56px; border-top: 1px solid var(--line); padding-block: 22px 34px; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.skeleton { color: var(--muted); font-size: 14.5px; }
+
+@media (max-width: 900px) {
+  .facts, .by-type { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rules { grid-template-columns: 1fr; }
+  .feature, .embed, .arch-grid, .lessons, .more { grid-template-columns: 1fr; }
+  .turn { grid-template-columns: 1fr; }
+  .flow { flex-direction: column; }
+  .arrow { width: auto; height: 22px; }
+  .arrow span { display: inline-block; transform: rotate(-90deg); }
+  .branch { flex-direction: column; align-items: stretch; }
+  .branch .node { max-width: none; }
 }
-.lede { margin: 0; color: var(--muted); font-size: 17px; max-width: 46em; }
-.trust { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 2px 0 0; padding: 0; list-style: none; font-size: 14.5px; color: var(--muted); }
-.trust li { display: flex; align-items: center; gap: 6px; }
-.trust svg { width: 17px; height: 17px; color: var(--accent); flex: none; }
+@media (max-width: 560px) {
+  body { font-size: 16px; }
+  .feature { padding: 18px; }
+  .report-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .q .q-body { padding-inline-start: 14px; }
+  .code { padding: 50px 14px 14px; }
+}
 
-/* הצ'אט ממלא את המסך */
-main { flex: 1; display: flex; flex-direction: column; }
-#chat { flex: 1 1 auto; min-height: 540px; max-height: 880px; display: flex; flex-direction: column; }
-#chat > .mk-panel { flex: 1; }
+/* כשהצ'אט פתוח במסך רחב - התוכן זז ימינה כדי שהחלון לא יסתיר אותו */
+.wrap { transition: margin .35s cubic-bezier(.2, .8, .2, 1); }
+@media (min-width: 1180px) {
+  html.mk-chat-open .wrap { margin-left: 470px; margin-right: max(24px, calc((100vw - 470px - 1080px) / 2)); }
+}
+.brand .mk-orb { width: 30px; height: 30px; box-shadow: none; }
+.brand .mk-orb::after { display: none; }
+.top nav { margin-inline-start: auto; display: flex; gap: 16px; font-size: 14.5px; align-items: center; }
+.top nav a { text-decoration: none; color: var(--muted); }
+html.mk-chat-open .top nav { margin-inline-start: 0; flex-basis: 100%; }
+.top nav a:hover { color: var(--ink); }
+.hero { padding-block: 40px 30px; max-width: 760px; }
+button.btn { font: inherit; font-weight: 600; font-size: 15.5px; cursor: pointer; color: inherit; }
+button.btn.primary { color: #fff; }
 
-footer { padding-block: 18px 22px; color: var(--muted); font-size: 13.5px; display: flex; flex-wrap: wrap; gap: 6px 18px; }
-footer a { text-decoration-color: var(--line); }
+/* מה הלקוחות מקבלים */
+.gets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.get { display: flex; flex-direction: column; gap: 10px; }
+.get .ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.get .ico svg { width: 22px; height: 22px; }
+.get h3 { font-size: 21px; }
+.get p { color: var(--muted); font-size: 15.5px; }
+.get .demo-hl, .get .demo-dept { margin-top: auto; }
+.demo-dept { font-size: 13.5px; background: var(--soft); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.demo-dept .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.demo-dept b { font-size: 14px; }
+.demo-dept .open { font-size: 12px; font-weight: 600; color: var(--ok); background: var(--ok-bg); border-radius: 999px; padding: 0 8px; }
+.demo-dept .num { background: var(--surface); border-radius: 8px; padding: 2px 8px; font-weight: 600; direction: ltr; unicode-bidi: isolate; }
+.demo-nf { font-size: 14px; background: var(--soft); border-radius: 10px; padding: 10px 12px; color: var(--muted); margin-top: auto; }
+.demo-nf .badge { margin-bottom: 4px; }
 
-@media (max-width: 640px) {
-  .pill { order: 3; }
-  .brand small { display: none; }
-  .intro { padding-block: 4px 12px; }
-  .lede { font-size: 16px; }
-  .trust { display: none; }
-  #chat { min-height: 500px; }
+/* הטמעה - בולט, למעלה */
+.embed-box { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 22px; align-items: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 24px; }
+.embed-box .code { align-self: start; }
+.embed-box ul { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 15.5px; }
+.here { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent); }
+.here .mk-orb { width: 22px; height: 22px; box-shadow: none; }
+.here .mk-orb::after { display: none; }
+
+/* פרקים מקופלים: מי שרוצה - פותח */
+.fold { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; margin-top: 12px; }
+.fold > summary { list-style: none; cursor: pointer; padding: 16px 20px; display: flex; align-items: center; gap: 12px; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary b { font-family: var(--display); font-weight: 400; font-size: 21px; }
+.fold > summary span { color: var(--muted); font-size: 15px; }
+.fold > summary::after { content: "+"; margin-inline-start: auto; font-size: 24px; line-height: 1; color: var(--muted); transition: transform .2s; }
+.fold[open] > summary::after { transform: rotate(45deg); }
+.fold > .fold-body { padding: 4px 20px 20px; }
+.score { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.score b { font-family: var(--display); font-weight: 400; font-size: 54px; line-height: 1; font-variant-numeric: tabular-nums; }
+.score span { color: var(--muted); font-size: 16px; max-width: 46ch; }
+
+@media (max-width: 900px) {
+  .gets, .embed-box { grid-template-columns: 1fr; }
+  .top nav a:not(.gh) { display: none; }
 }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <a class="brand" href="/">
-      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10h8" stroke-width="3" opacity=".55"/></svg></span>
-      מקור <small>· עוזר המידע לאתר הפניקס</small>
-    </a>
+    <a class="brand" href="/"><span class="mk" aria-hidden="true"><span class="mk-orb" data-state="idle"><svg viewBox="0 0 24 24"><rect class="ln" x="4" y="6" width="16" height="3" rx="1.5"/><rect class="ln" x="9" y="10.5" width="11" height="3" rx="1.5"/><rect class="ln" x="6" y="15" width="14" height="3" rx="1.5"/></svg></span></span>צ'אט לאתר הפניקס</a>
     <span class="pill">פרויקט האקתון · לא שירות רשמי של הפניקס</span>
-    <a class="team-link" href="team.html">לצוות הפניקס ←</a>
+    <nav aria-label="ניווט">
+      <a href="#embed">באתר שלכם</a>
+      <a href="#gets">מה הלקוחות מקבלים</a>
+      <a href="#feature">הפיצ'ר המקורי</a>
+      <a href="#trust">אמינות</a>
+      <a href="#arch">איך זה בנוי</a>
+      <a class="gh" href="https://github.com/neomi5318-do/phoenix-rag-bot" target="_blank" rel="noopener">קוד פתוח ↗</a>
+    </nav>
   </header>
+
+  <div class="hero">
+    <div class="eyebrow">בוט לאתר הפניקס</div>
+    <h1>הבוט שיודע את האתר שלכם, <span class="hl">וגם יודע להגיד מה לא כתוב בו.</span></h1>
+    <p class="challenge">"לקוח ששואל 'איך מגישים תביעה על נזקי מים?' לא רוצה לחפש - הוא רוצה תשובה."<small>מתוך האתגר שלכם</small></p>
+    <p class="lede">הבוט קרא את כל העמודים הציבוריים באתר שלכם. הוא עונה רק ממה שכתוב בהם, מראה ללקוח את המשפט המדויק שעליו התשובה נשענת, ובשאלה אישית מעביר אותו למוקד הנכון.</p>
+    <div class="actions">
+      <button class="btn primary" type="button" id="open-chat">לשאול את הבוט עכשיו</button>
+      <a class="btn" href="#embed">איך מכניסים אותו לאתר</a>
+    </div>
+    <div class="facts" aria-label="במספרים">
+      <div class="fact"><b>1,103</b><span>עמודים ציבוריים נקראו מהאתר</span></div>
+      <div class="fact"><b>4,641</b><span>קטעים שהבוט יכול לצטט</span></div>
+      <div class="fact"><b id="f-pass">–</b><span>שאלות בדיקה עברו</span></div>
+      <div class="fact"><b id="f-time">–</b><span>שניות, זמן תשובה חציוני</span></div>
+    </div>
+  </div>
 </div>
 
 <main class="wrap">
-  <div class="intro">
-    <h1>תשובות מאתר הפניקס, <span class="hl">עם המקור.</span></h1>
-    <p class="lede">שאלו על ביטוח, תביעות, פנסיה וחיסכון. התשובות מגיעות רק ממה שכתוב באתר הפניקס, ומה שלא כתוב שם, נגיד לכם בכנות.</p>
-    <ul class="trust">
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg>מקור לכל תשובה</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h7"/><path d="M14.5 4.5l5 5L11 18H6v-5z"/></svg>המשפט המדויק מודגש בעמוד</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>שאלה אישית? המוקד הנכון, ואם הוא פתוח עכשיו</li>
-    </ul>
-  </div>
-  <div id="chat" aria-label="הצ'אט"></div>
+  <section id="embed">
+    <div class="sec-head">
+      <h2>שורה אחת, והוא באתר שלכם</h2>
+      <p>מדביקים את השורה הזו בקוד של fnx.co.il, ובפינת כל עמוד מופיעה בועת צ'אט. <span class="here"><span class="mk" aria-hidden="true"><span class="mk-orb" data-state="idle"><svg viewBox="0 0 24 24"><rect class="ln" x="4" y="6" width="16" height="3" rx="1.5"/><rect class="ln" x="9" y="10.5" width="11" height="3" rx="1.5"/><rect class="ln" x="6" y="15" width="14" height="3" rx="1.5"/></svg></span></span>בדיוק כמו בפינת המסך הזה.</span></p>
+    </div>
+    <div class="embed-box">
+      <div class="code"><button class="copy" type="button" id="copy">העתקה</button><span id="snippet"></span></div>
+      <ul>
+        <li>לא משנים שום דבר אחר באתר, והעיצוב לא מתנגש בשלכם.</li>
+        <li>הלקוח מקבל תשובה בלי לעזוב את העמוד שבו הוא נמצא.</li>
+        <li>כשהאתר מתעדכן: מריצים שוב את האיסוף, והבוט יודע את התוכן החדש.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="gets">
+    <div class="sec-head">
+      <h2>מה הלקוחות שלכם מקבלים</h2>
+      <p>שלושת הכללים מהאתגר, כמו שהלקוח פוגש אותם בצ'אט.</p>
+    </div>
+    <div class="gets">
+      <article class="card get">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg></span>
+        <h3>רק מה שכתוב באתר</h3>
+        <p>בלי ידע כללי ובלי ניחושים. כשמשהו לא כתוב באתר, הבוט אומר את זה ומפנה למוקד, במקום להמציא.</p>
+        <div class="demo-nf"><span class="badge not_found">לא מופיע באתר</span><br>"שעות הפתיחה של סניף אילת לא מופיעות באתר. אפשר לפנות למוקד…"</div>
+      </article>
+      <article class="card get">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h7"/><path d="M14.5 4.5l5 5L11 18H6v-5z"/></svg></span>
+        <h3>המשפט המדויק, מודגש בעמוד</h3>
+        <p>לחיצה על המקור פותחת את העמוד האמיתי באתר שלכם, והמשפט שעליו התשובה נשענת כבר מסומן בצהוב. הלקוח רואה בעיניים שזה נכון.</p>
+        <div class="demo-hl"><span class="url">fnx.co.il/…/damage-to-the-apartment/#:~:text=נשלח לך בתוך 30 יום</span>…לאחר שנקבל את כל המסמכים הנדרשים, <mark>נשלח לך בתוך 30 יום</mark> הודעה לגבי ההחלטה…</div>
+      </article>
+      <article class="card get">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg></span>
+        <h3>שאלה אישית? המוקד הנכון</h3>
+        <p>"האם הפוליסה שלי מכסה?" מקבלת הסבר כללי לפי האתר, וכרטיס של המוקד שמתאים לנושא, מתוך 10 מוקדים שאומתו מול "צור קשר", כולל אם הוא פתוח ברגע זה.</p>
+        <div class="demo-dept"><div class="row"><b>מוקד שירות לקוחות - תחום דירה</b><span class="open">פתוח עכשיו</span></div><div class="row"><span class="num">*5432</span><span class="num">054-9893455</span></div></div>
+      </article>
+    </div>
+    <div class="extras" aria-label="עוד">
+      <span class="chip">🌍 עונה ברוסית, בערבית ובאנגלית</span>
+      <span class="chip">🎤 שאלה בקול והקראת התשובה</span>
+      <span class="chip">⚖️ טבלה בשאלות "מה ההבדל"</span>
+      <span class="chip">📋 רשימת "מה להכין" בשאלות על תביעה</span>
+    </div>
+  </section>
+
+  <section id="feature">
+    <div class="sec-head">
+      <h2>הפיצ'ר המקורי: "לא כתוב באתר" הופך לרשימת משימות בשבילכם</h2>
+      <p>האתגר ביקש שהבוט יידע להגיד "זה לא כתוב באתר". אנחנו שומרים את הרגעים האלה, כי כל אחד מהם הוא לקוח שחיפש משהו באתר שלכם ולא מצא.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-text">
+        <span class="tag">חדש, ולא ביקשו אותו</span>
+        <h3>הבוט אומר לצוות התוכן מה חסר באתר</h3>
+        <p>כל שאלה שלא נמצאה לה תשובה נרשמת בדוח אחד, ממוינת לפי האזור באתר שהכי קרוב אליה. כך רואים לא רק מה הלקוחות שואלים, אלא איפה האתר לא עונה להם.</p>
+        <ol>
+          <li>לקוח שואל שאלה שאין לה תשובה באתר.</li>
+          <li>הוא מקבל תשובה כנה והפניה למוקד הנכון.</li>
+          <li>השאלה נכנסת לדוח, אחרי מחיקה אוטומטית של מספרים ומיילים.</li>
+          <li>צוות התוכן רואה מה להוסיף לאתר, ובאיזה עמוד.</li>
+        </ol>
+        <a class="btn primary" href="insights.html">לדוח המלא ←</a>
+      </div>
+      <div class="report" aria-live="polite">
+        <div class="live"><span class="dot"></span><span id="r-live">הדוח, בזמן אמת</span></div>
+        <div class="report-stats">
+          <div><b id="r-total">–</b><span>שאלות נשאלו</span></div>
+          <div><b id="r-gap">–</b><span>בלי תשובה באתר</span></div>
+          <div><b id="r-topic" class="txt">–</b><span>האזור שחסר בו הכי הרבה</span></div>
+        </div>
+        <div id="r-recent"><p class="skeleton">טוען…</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="trust">
+    <div class="sec-head">
+      <h2>למה אפשר לסמוך עליו</h2>
+      <p>הנחיה למודל לא מספיקה, כי מודלים טועים. לכן כל כלל נאכף פעמיים: בהנחיות, ובקוד שבודק כל תשובה לפני שהיא מגיעה ללקוח. ובדקנו את זה.</p>
+    </div>
+    <div class="score"><b id="s-pass">–</b><span>שאלות בדיקה עברו. 12 מהן הן שאלות שאסור לענות עליהן: אין תשובה באתר, שאלה אישית, ייעוץ, או ניסיון לעקוף את הכללים. כמו שכתבתם בטיפים: "מודדות גם 'לא לענות' - זה חצי מהציון".</span></div>
+    <div class="by-type" id="by-type"></div>
+
+    <details class="fold">
+      <summary><b>שלושת הכללים, ואיך כל אחד נאכף</b><span>בהנחיות, ובקוד</span></summary>
+      <div class="fold-body">
+        <div class="rules">
+          <article class="card rule">
+            <h3>המקור היחיד</h3>
+            <blockquote>"התוכן באתר הפניקס. בלי ידע חיצוני, בלי השערות."</blockquote>
+            <h4>בהנחיות למודל</h4>
+            <ul><li>מקבל רק את 6 הקטעים שנמצאו באתר, ומחויב לענות רק מהם.</li><li>מה שלא כתוב במפורש = "לא נמצא".</li></ul>
+            <h4>בקוד, גם אם המודל טועה</h4>
+            <ul class="code-way"><li>תשובה בלי מקור הופכת ל"לא נמצא".</li><li>שאלה שאין לה שום קשר לאתר לא מגיעה בכלל למודל.</li></ul>
+          </article>
+          <article class="card rule">
+            <h3>ציטוט</h3>
+            <blockquote>"כל תשובה מצרפת את כתובת העמוד שממנו נלקחה. אין מקור - אין תשובה."</blockquote>
+            <h4>בהנחיות למודל</h4>
+            <ul><li>מחזיר את <b>מספר</b> הקטע, ומשפט אחד שמועתק ממנו מילה במילה.</li></ul>
+            <h4>בקוד, גם אם המודל טועה</h4>
+            <ul class="code-way"><li>את הקישור בונה הקוד מתוך הקטע, ולכן אי אפשר לקבל קישור מומצא.</li><li>המשפט נבדק מול הקטע. אם הוא לא מופיע שם מילה במילה, או לא מוכיח את התשובה, הוא מוחלף בשורה אמיתית שכן מוכיחה.</li></ul>
+          </article>
+          <article class="card rule">
+            <h3>גבולות</h3>
+            <blockquote>"הבוט לא נותן ייעוץ אישי ולא ניגש למידע של לקוח. הוא מסביר מה כתוב באתר."</blockquote>
+            <h4>בהנחיות למודל</h4>
+            <ul><li>"הפוליסה שלי", "האם אני מכוסה" = שאלה אישית: מסבירים מה כתוב באתר באופן כללי, ולא עונים כן או לא.</li></ul>
+            <h4>בקוד, גם אם המודל טועה</h4>
+            <ul class="code-way"><li>בדיקה שנייה לשאלות אישיות, פתיחה קבועה שמפנה לשירות הלקוחות, ובלי הבטחות ("נחזור אליך").</li><li>מוצג המוקד שמתאים לנושא.</li></ul>
+          </article>
+        </div>
+      </div>
+    </details>
+
+    <details class="fold">
+      <summary><b>התסריט מהאתגר שלכם</b><span>מה ביקשתם, ומה הבוט ענה</span></summary>
+      <div class="fold-body">
+        <div id="turns"><p class="skeleton">טוען את התשובות…</p></div>
+        <p class="muted" id="recorded" style="font-size:14px"></p>
+      </div>
+    </details>
+
+    <details class="fold">
+      <summary><b>כל 30 השאלות והתשובות</b><span id="eval-date"></span></summary>
+      <div class="fold-body"><div class="qlist" id="qlist"><p class="skeleton">טוען את התוצאות…</p></div></div>
+    </details>
+
+    <details class="fold">
+      <summary><b>מה הבדיקות לימדו אותנו</b><span>וכך שיפרנו</span></summary>
+      <div class="fold-body">
+        <div class="lessons">
+          <div class="card lesson"><span class="was">היה</span>"ותוך כמה זמן מקבלים תשובה?" קיבלה "לא נמצא", למרות שהתשובה כתובה באותו עמוד.<span class="now">עכשיו</span>שאלת המשך מתחילה מהעמוד שממנו ענינו קודם, ועונה "בתוך 30 יום".</div>
+          <div class="card lesson"><span class="was">היה</span>"האם הפוליסה שלי מכסה?" קיבלה לפעמים "כן, הפוליסה שלך יכולה לכסות…".<span class="now">עכשיו</span>על פוליסה של לקוח לא עונים כן או לא. מסבירים מה כתוב באתר ומפנים לשירות הלקוחות.</div>
+          <div class="card lesson"><span class="was">היה</span>"מה הטלפון של תביעות דירה?" קיבלה את מספר הוואטסאפ. בעמוד "צור קשר" יש אייקון של וואטסאפ ליד המספר, והאייקון נמחק כשחילצנו את הטקסט.<span class="now">עכשיו</span>האיסוף כותב "וואטסאפ:" במילים ליד המספר, והתשובה היא 5070*.</div>
+          <div class="card lesson"><span class="was">היה</span>"יש לי נזילה בבית, איך מגישים תביעה?" סווגה כשאלה אישית, בגלל "יש לי".<span class="now">עכשיו</span>שאלה על איך עושים או מה אפשר לעשות נענית מהאתר, גם כשהלקוח מספר על המקרה שלו.</div>
+          <div class="card lesson"><span class="was">היה</span>כשכל המודלים החינמיים הגיעו למכסה בבת אחת, השרת נתקע עד הפעלה מחדש.<span class="now">עכשיו</span>הוא מחכה ומנסה שוב (Backoff), עוצר אחרי 40 שניות לכל היותר, וחוזר לעבוד מעצמו.</div>
+          <div class="card lesson"><span class="was">היה</span>המשפט המודגש היה לפעמים אמיתי, אבל לא קשור לנקודה העיקרית בתשובה.<span class="now">עכשיו</span>הקוד בודק שהמשפט מוכיח את המשפט הראשון של התשובה, ואם לא - בוחר שורה אחרת מהעמוד.</div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section id="arch">
+    <div class="sec-head">
+      <h2>איך זה בנוי</h2>
+      <p>RAG מלא, כמו שהאתגר הגדיר: איסוף תוכן, אינדקס סמנטי, אחזור, ותשובה עם ציטוט. כל שלב הוא קובץ קצר שאפשר לקרוא.</p>
+    </div>
+    <div class="lane">
+      <div class="lane-name">פעם אחת, מראש</div>
+      <div class="flow">
+        <div class="node"><b>מפת האתר</b><small>רק עמודים ציבוריים, שנייה בין בקשות</small></div><div class="arrow" aria-hidden="true"><span>←</span></div>
+        <div class="node"><b>1,103 עמודים</b><small>בלי דוחות למשקיעים, דרושים ותגיות</small></div><div class="arrow" aria-hidden="true"><span>←</span></div>
+        <div class="node"><b>4,641 קטעים</b><small>לפי הכותרות, כדי ששאלה והתשובה שלה יישארו יחד. כפולים מוסרים</small></div><div class="arrow" aria-hidden="true"><span>←</span></div>
+        <div class="node"><b>"טביעת משמעות" לכל קטע</b><small>מודל multilingual-e5, עם תאריך איסוף</small></div>
+      </div>
+    </div>
+    <div class="lane">
+      <div class="lane-name">בכל שאלה</div>
+      <div class="flow">
+        <div class="node"><b>שאלה</b><small>בכל שפה. שאלת המשך מתחילה מהעמוד הקודם</small></div><div class="arrow" aria-hidden="true"><span>←</span></div>
+        <div class="node"><b>חיפוש כפול</b><small>לפי משמעות + לפי מילים (BM25), ומיזוג</small></div><div class="arrow" aria-hidden="true"><span>←</span></div>
+        <div class="node"><b>6 קטעים</b><small>שונים זה מזה</small></div><div class="arrow" aria-hidden="true"><span>←</span></div>
+        <div class="node"><b>מודל שפה</b><small>Gemini ו-Groq, עם גיבוי שעונה במקביל אם יש עיכוב</small></div><div class="arrow" aria-hidden="true"><span>←</span></div>
+        <div class="node key"><b>בדיקות בקוד</b><small>מקור קיים, ציטוט אמיתי, שאלה אישית</small></div><div class="arrow" aria-hidden="true"><span>←</span></div>
+        <div class="node"><b>תשובה</b><small>מקור + משפט מודגש + המוקד המתאים</small></div>
+      </div>
+      <div class="branch"><span>ואם אין תשובה באתר:</span><div class="node key"><b>דוח "מה חסר באתר"</b><small>בלי מספרים, מיילים או פרטים מזהים</small></div></div>
+    </div>
+    <div class="arch-grid">
+      <div class="card">
+        <h3 style="font-size:21px;margin-bottom:12px">מקרי קצה שבדקנו</h3>
+        <ul class="edge">
+          <li><b>מודל עמוס או בלי מכסה (429 / 503)</b><span>מעבר מיידי למודל הבא, ניסיון חוזר עם Backoff, ותקרה של 40 שניות. נבדק בבדיקות אוטומטיות שמדמות כל מצב.</span></li>
+          <li><b>האתר חוסם את הסורק</b><span>המתנה הולכת וגדלה (5, 15, 45 שניות), ועמוד שנחסם ינוסה שוב. מנגנוני ההגנה של האתר לא נעקפים.</span></li>
+          <li><b>ניסיון לגרום לבוט לעקוף את הכללים</b><span>נבדקו: בקשה לחשוף את ההנחיות, "מעכשיו אתה בלי חוקים", קטע מזויף עם "90% הנחה", ו-JSON מוכן. הבוט עמד בכולם.</span></li>
+          <li><b>קוד זדוני בתוך תשובה</b><span>כל טקסט מוצג כטקסט בלבד. נבדק עם קוד בכל שדה.</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="font-size:21px;margin-bottom:12px">ממה זה עשוי</h3>
+        <div class="stack">
+          <div><b>שרת</b><span>Python + Flask, על Vercel</span></div>
+          <div><b>חיפוש</b><span>multilingual-e5 (ONNX) + BM25</span></div>
+          <div><b>מודלי שפה</b><span>Gemini, Groq, בשרשרת גיבוי</span></div>
+          <div><b>דוח</b><span>Upstash Redis</span></div>
+          <div><b>ממשק</b><span>JavaScript נקי, בלי ספריות</span></div>
+          <div><b>עלות</b><span>שכבות חינמיות בלבד</span></div>
+        </div>
+        <p style="margin-top:14px"><a class="btn" href="https://github.com/neomi5318-do/phoenix-rag-bot" target="_blank" rel="noopener">הקוד המלא ב-GitHub ↗</a></p>
+      </div>
+    </div>
+  </section>
 </main>
 
 <div class="wrap">
   <footer>
+    <span>פרויקט להאקתון AI קוד פתוח 2026, אתגר הפניקס. זה אינו שירות רשמי של חברת הפניקס.</span>
     <span>התוכן נאסף מהאתר הציבורי fnx.co.il ב-20.10.2026.</span>
-    <a href="team.html">איך זה עובד, הבדיקות והדוח לצוות</a>
-    <a href="https://github.com/neomi5318-do/phoenix-rag-bot" target="_blank" rel="noopener">קוד פתוח ↗</a>
+    <a href="insights.html">הדוח לצוות התוכן</a>
+    <a href="https://github.com/neomi5318-do/phoenix-rag-bot" target="_blank" rel="noopener">GitHub ↗</a>
   </footer>
 </div>
 
-<script src="widget.js" data-mount="#chat" defer></script>
+<script>
+(function () {
+  "use strict";
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function paras(t) { return String(t).split("\n").filter(Boolean).map(function (l) { return '<p dir="auto">' + esc(l) + "</p>"; }).join(""); }
+  function hlLink(url, quote) { return quote ? url.split("#")[0] + "#:~:text=" + encodeURIComponent(quote).replace(/-/g, "%2D") : url; }
+  function short(url) { return url.replace(/^https:\/\/www\./, "").replace(/\/$/, ""); }
+  function srcHtml(s) {
+    return '<div class="src"><span class="label">📄 המקור</span>' +
+      (s.quote ? "<span>…<mark>" + esc(s.quote) + "</mark>…</span>" : "") +
+      '<a href="' + esc(hlLink(s.url, s.quote)) + '" target="_blank" rel="noopener" dir="ltr">' + esc(short(s.url)) + " ↗</a></div>";
+  }
+  var STATUS = { answered: "✓ נמצא באתר", not_found: "לא מופיע באתר", personal: "שאלה אישית" };
+
+  // מה האתגר ביקש בכל שלב בתסריט (מתוך מסמך האתגר)
+  var EXPECT = [
+    { want: "מחפש באינדקס, מוצא את עמוד התביעה על נזקי מים בביטוח דירה, ועונה: מה צריך להכין, איפה מגישים, ומה קורה אחר כך. בסוף - המקור.",
+      check: function (t) { return t.status === "answered" && t.sources.length > 0; } },
+    { want: "עונה מתוך אותו עמוד, או אומר שזה לא כתוב ומפנה לשירות הלקוחות.",
+      check: function (t, all) { return t.status === "answered" && t.sources.some(function (s) { return all[0].sources.some(function (p) { return p.url === s.url; }); }); } },
+    { want: "\"אני יכול להסביר מה הכיסוי כולל לפי האתר, אבל את הפוליסה האישית שלך בודקים בשירות הלקוחות.\"",
+      check: function (t) { return t.status === "personal" && !/^(כן|לא)\b/.test(t.answer); } }
+  ];
+
+  fetch("showcase.json", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+    document.getElementById("turns").innerHTML = d.turns.map(function (t, i) {
+      var e = EXPECT[i] || { want: "", check: function () { return false; } };
+      var ok = e.check(t, d.turns);
+      return '<div class="turn">' +
+        '<div class="ask"><span class="who">לקוחה</span><span class="bubble">' + esc(t.question) + "</span></div>" +
+        '<div class="card expect"><div class="label">מה כתבתם שהבוט צריך לעשות</div><p>' + esc(e.want) + "</p></div>" +
+        '<div class="card got"><div class="label">מה הבוט ענה <span class="badge ' + esc(t.status) + '">' + esc(STATUS[t.status] || "") + "</span>" +
+        '<span class="muted" style="font-weight:400">' + esc(t.seconds) + " שניות</span></div>" +
+        '<div class="text">' + paras(t.answer) + "</div>" +
+        (t.sources[0] ? srcHtml(t.sources[0]) : "") +
+        (t.status !== "answered" ? '<div class="src"><span class="label">☎️ המוקד שהוצג</span><span>' + esc(t.department) + "</span></div>" : "") +
+        (ok ? '<div class="verdict">✓ כמו שביקשתם</div>' : "") + "</div></div>";
+    }).join("");
+    document.getElementById("recorded").textContent = "תשובות אמיתיות שהבוט החי החזיר ב-" + d.recorded + ". אפשר לשאול את אותן שאלות בצ'אט שבפינה.";
+  }).catch(function () { document.getElementById("turns").innerHTML = '<p class="skeleton">לא הצלחתי לטעון. אפשר להריץ את התסריט בבוט החי.</p>'; });
+
+  // 30 שאלות הבדיקה
+  var TYPES = [["answerable", "יש להן תשובה באתר"], ["not_on_site", "אין להן תשובה באתר"],
+               ["boundary", "אישיות, ייעוץ, או ניסיון עקיפה"], ["follow_up", "שאלות המשך"]];
+  var rows = [], filter = null;
+  function drawList() {
+    var list = filter ? rows.filter(function (r) { return r.type === filter; }) : rows;
+    document.getElementById("qlist").innerHTML = list.map(function (r) {
+      return '<details class="q"><summary><span class="' + (r.pass ? "mark-ok" : "mark-bad") + '" aria-label="' + (r.pass ? "עברה" : "נכשלה") + '">' + (r.pass ? "✓" : "✗") + "</span>" +
+        '<span dir="auto">' + (r.context ? '<span class="ctx">אחרי: "' + esc(r.context) + '"</span>' : "") + esc(r.question) + "</span>" +
+        '<span class="q-meta"><span class="badge ' + esc(r.status) + '">' + esc(STATUS[r.status] || r.status) + "</span>" +
+        (r.seconds ? "<small>" + esc(r.seconds) + "s</small>" : "") + "</span></summary>" +
+        '<div class="q-body">' + (r.expected ? '<span class="exp">מה ציפינו: ' + esc(r.expected) + "</span>" : "") +
+        '<div class="ans" dir="auto">' + esc(r.answer) + "</div>" +
+        (r.source ? '<div class="src"><a href="' + esc(hlLink(r.source, r.quote)) + '" target="_blank" rel="noopener" dir="ltr">' + esc(short(r.source)) + " ↗</a></div>" : "") +
+        "</div></details>";
+    }).join("");
+  }
+  fetch("eval.json", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+    rows = d.rows;
+    var s = d.summary;
+    document.getElementById("f-pass").textContent = s.passed + "/" + s.total;
+    document.getElementById("s-pass").textContent = s.passed + "/" + s.total;
+    if (s.median_seconds) document.getElementById("f-time").textContent = String(s.median_seconds);
+    document.getElementById("by-type").innerHTML = TYPES.map(function (t) {
+      var of = rows.filter(function (r) { return r.type === t[0]; });
+      var ok = of.filter(function (r) { return r.pass; }).length;
+      return '<button class="type-tile" type="button" data-type="' + t[0] + '" aria-pressed="false"><b>' + ok + "/" + of.length + "</b><span>" + t[1] + "</span></button>";
+    }).join("");
+    document.querySelectorAll(".type-tile").forEach(function (b) {
+      b.addEventListener("click", function () {
+        filter = filter === b.dataset.type ? null : b.dataset.type;
+        var all = document.getElementById("qlist").closest("details"); if (all) all.open = true;
+        document.querySelectorAll(".type-tile").forEach(function (x) { x.setAttribute("aria-pressed", String(x.dataset.type === filter)); });
+        drawList();
+      });
+    });
+    drawList();
+    document.getElementById("eval-date").textContent = "הורץ ב-" + s.date + " · לחיצה על שאלה פותחת את התשובה";
+  }).catch(function () { document.getElementById("qlist").innerHTML = '<p class="skeleton">התוצאות לא זמינות כרגע.</p>'; });
+
+  // הדוח - נתונים חיים
+  fetch("/api/insights").then(function (r) { return r.json(); }).then(function (d) {
+    if (!d.enabled) throw 0;
+    document.querySelector(".report .dot").classList.add("on");
+    document.getElementById("r-total").textContent = d.total.toLocaleString("he-IL");
+    document.getElementById("r-gap").textContent = d.total ? Math.round(100 * d.not_found / d.total) + "%" : "–";
+    document.getElementById("r-topic").textContent = d.topics.length ? d.topics[0][0] : "–";
+    document.getElementById("r-recent").innerHTML = d.recent.slice(0, 4).map(function (g) {
+      return '<div class="gap"><span dir="auto">' + esc(g.q) + "</span><small>" + esc(g.topic || "") + "</small></div>";
+    }).join("") || '<p class="skeleton">עוד אין שאלות כאלה.</p>';
+  }).catch(function () {
+    document.getElementById("r-live").textContent = "הדוח לא זמין כרגע";
+    document.getElementById("r-recent").innerHTML = '<p class="skeleton">אפשר לפתוח את הדוח המלא.</p>';
+  });
+
+  // שורת ההטמעה, עם הכתובת האמיתית של האתר הזה
+  var line = '<script src="' + location.origin + '/widget.js" defer><\/script>';
+  document.getElementById("open-chat").addEventListener("click", function () { if (window.Makor && window.Makor.open) window.Makor.open(); });
+  document.getElementById("snippet").innerHTML = '&lt;script <span class="attr">src</span>=<span class="str">"' + esc(location.origin) + '/widget.js"</span> defer&gt;&lt;/script&gt;';
+  document.getElementById("copy").addEventListener("click", function (e) {
+    var btn = e.currentTarget;
+    (navigator.clipboard ? navigator.clipboard.writeText(line) : Promise.reject())
+      .then(function () { btn.textContent = "הועתק"; }).catch(function () { btn.textContent = "סמנו והעתיקו"; })
+      .then(function () { setTimeout(function () { btn.textContent = "העתקה"; }, 1800); });
+  });
+
+  // ניווט: מסמן את הפרק שרואים עכשיו
+  var links = document.querySelectorAll(".top nav a");
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) links.forEach(function (a) { a.classList.toggle("on", a.getAttribute("href") === "#" + en.target.id); });
+      });
+    }, { rootMargin: "-40% 0px -55% 0px" });
+    document.querySelectorAll("main section").forEach(function (s) { io.observe(s); });
+  }
+})();
+</script>
+<script src="widget.js" data-open="auto" defer></script>
 </body>
 </html>

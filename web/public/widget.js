@@ -411,16 +411,22 @@
     this.log.appendChild(bot);
     this.scroll();
 
-    return fetch(BASE + "/api/ask", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: question, history: this.history.slice(-3) })
-    })
-      .then(function (r) {
-        return r.json().then(function (data) {
-          if (!r.ok) throw new Error(data.error || "תקלה זמנית");
-          return data;
+    var body = JSON.stringify({ question: question, history: this.history.slice(-3) });
+    // ניסיון שני שקט: אם השרת עמוס, מחכים 2.5 שניות ומנסים שוב לפני שמציגים הודעת שגיאה
+    function send(attempt) {
+      return fetch(BASE + "/api/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: body })
+        .then(function (r) {
+          return r.json().then(function (data) {
+            if (!r.ok) throw new Error(data.error || "תקלה זמנית");
+            return data;
+          });
+        })
+        .catch(function (err) {
+          if (attempt > 0) throw err;
+          return new Promise(function (ok) { setTimeout(ok, 2500); }).then(function () { return send(1); });
         });
-      })
+    }
+    return send(0)
       .then(function (result) {
         wait.stop();
         self.history.push({ q: question, a: result.answer,     // + העמודים שמהם ענינו - לשאלת המשך

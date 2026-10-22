@@ -107,7 +107,9 @@ def _block(model, error):
     """כמה זמן לא לנסות שוב את המודל, לפי סוג השגיאה."""
     msg = str(error)
     if "PerDay" in msg or "per day" in msg.lower() or "TPD" in msg:
-        _blocked_until[model] = time.time() + 3 * 3600   # מכסה יומית
+        # מכסה יומית. ב-Gemini היא מתאפסת פעם ביום -> 3 שעות. ב-Groq היא "חלון מתגלגל"
+        # שמתפנה בהדרגה (מודלים של Groq הם עם "/" בשם) -> מנסים שוב אחרי רבע שעה.
+        _blocked_until[model] = time.time() + (15 * 60 if "/" in model.split("#")[0] else 3 * 3600)
     elif "429" in msg:
         _blocked_until[model] = time.time() + 60          # מכסה לדקה
     else:
@@ -165,12 +167,16 @@ def generate_json(system, prompt, schema, validate):
        (Exponential Backoff) - עד TOTAL_BUDGET שניות בסך הכול."""
     deadline = time.time() + TOTAL_BUDGET
     errors = []
-    for pause in (0,) + RETRY_PAUSES:
+    rounds = (0,) + RETRY_PAUSES
+    for i, pause in enumerate(rounds):
         if pause:
             if time.time() + pause > deadline - 5:   # אין מספיק זמן לסבב נוסף
                 break
             time.sleep(pause)
-        result = _race(_available(), system, prompt, schema, validate, deadline, errors)
+        # בסבב האחרון מנסים את *כל* המודלים, גם את אלה שסומנו כחסומים - אולי כבר התפנו.
+        # מודל שבאמת בלי מכסה נכשל תוך חצי שנייה, אז זה כמעט לא עולה זמן.
+        chain = _available() if i < len(rounds) - 1 else list(CHAIN)
+        result = _race(chain, system, prompt, schema, validate, deadline, errors)
         if result:
             return result
     raise ModelError("כל המודלים נכשלו: " + " | ".join(errors))

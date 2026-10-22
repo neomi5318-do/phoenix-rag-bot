@@ -108,6 +108,13 @@ def t_budget():                       # כולם תקועים -> עוצרים א
     assert time.time() - t < 9, time.time() - t
 
 
+def t_last_round_tries_blocked():     # מודל שסומן כחסום אבל כבר התפנה - נוסה בסבב האחרון
+    log = setup("503", "503", "503", "ok")
+    llm._blocked_until["m3"] = time.time() + 3 * 3600
+    _, model = llm.generate_json("", "", {}, valid)
+    assert model == "m3", log
+
+
 if __name__ == "__main__":
     real = list(llm.CHAIN)
     for name, f in [("429 -> מעבר מיידי למודל הבא", t_fallback),
@@ -115,7 +122,8 @@ if __name__ == "__main__":
                     ("מודל איטי -> מירוץ מקביל אחרי HEDGE_AFTER שניות", t_hedge),
                     ("כולם נכשלו -> Backoff של 1 ו-3 שניות", t_backoff),
                     ("רשימת המודלים לא מתרוקנת (באג שתוקן)", t_chain_survives),
-                    ("תקרת זמן כוללת", t_budget)]:
+                    ("תקרת זמן כוללת", t_budget),
+                    ("סבב אחרון מנסה גם מודלים חסומים", t_last_round_tries_blocked)]:
         run(name, f)
     llm.CHAIN[:] = real
     print("כל הבדיקות עברו")

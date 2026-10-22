@@ -45,7 +45,9 @@ def _error(r):
 
 
 def _gemini(model, system, prompt, schema, timeout=25):
-    key = os.getenv("GEMINI_API_KEY")
+    # "gemini-3.8-flash#2" = אותו מודל, עם המפתח השני (GEMINI_API_KEY_2) - מכסה יומית נפרדת
+    model, _, n = model.partition("#")
+    key = os.getenv(f"GEMINI_API_KEY_{n}" if n else "GEMINI_API_KEY")
     if not key:
         raise ModelError("no GEMINI_API_KEY")
     body = {
@@ -94,6 +96,11 @@ CHAIN = [
     ("gemma-4-31b-it", _gemini),
     ("qwen/qwen3.8-27b", _groq),
 ]
+
+# מפתח Gemini שני (מפרויקט אחר בגוגל = מכסה יומית נוספת): אם הוגדר, כל מודל Gemini מקבל "תאום"
+# שמשתמש בו, מיד אחריו ברשימה. כשהמכסה של המפתח הראשון נגמרת - ממשיכים לאותו מודל עם השני.
+if os.getenv("GEMINI_API_KEY_2"):
+    CHAIN = [entry for m, f in CHAIN for entry in ([(m, f), (m + "#2", f)] if f is _gemini else [(m, f)])]
 
 
 def _block(model, error):

@@ -101,6 +101,14 @@ def report():
         if g.get("topic") not in known:
             g["topic"] = "כללי"
     topics = Counter(g.get("topic") or "כללי" for g in gaps)
+    # אותה שאלה שנשאלה כמה פעמים - מופיעה פעם אחת, עם מספר הפעמים (מהחדשה לישנה)
+    times = Counter(" ".join(g["q"].split()) for g in gaps)
+    unique, seen = [], set()
+    for g in gaps:
+        key = " ".join(g["q"].split())
+        if key not in seen:
+            seen.add(key)
+            unique.append({**g, "count": times[key]})
     return {
         "enabled": True,
         "total": int(total or 0),
@@ -108,5 +116,5 @@ def report():
         "not_found": int(not_found or 0),
         "personal": int(personal or 0),
         "topics": topics.most_common(8),
-        "recent": gaps[:40],
+        "recent": unique[:40],
     }

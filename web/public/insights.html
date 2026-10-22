@@ -49,6 +49,7 @@ h1 span { background: linear-gradient(transparent 55%, var(--mark) 55%, var(--ma
 .q small { color: var(--muted); white-space: nowrap; font-size: 12.5px; }
 .tag { display: inline-block; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; margin-inline-start: 6px; }
 .empty { color: var(--muted); }
+.times { color: var(--warn); font-size: 13px; margin-inline-start: 4px; }
 .note { font-size: 13.5px; color: var(--muted); }
 @media (max-width: 720px) {
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -109,7 +110,8 @@ h1 span { background: linear-gradient(transparent 55%, var(--mark) 55%, var(--ma
 
     document.getElementById("recent").innerHTML = d.recent.length ? d.recent.map(function (g) {
       var when = new Date(g.ts * 1000).toLocaleDateString("he-IL", { day: "numeric", month: "numeric" });
-      return '<div class="q"><p dir="auto">' + esc(g.q) + (g.topic ? '<span class="tag">' + esc(g.topic) + "</span>" : "") +
+      return '<div class="q"><p dir="auto">' + esc(g.q) + (g.count > 1 ? ' <b class="times">×' + g.count + "</b>" : "") +
+        (g.topic ? '<span class="tag">' + esc(g.topic) + "</span>" : "") +
         "</p><small>" + when + "</small></div>";
     }).join("") : '<p class="empty">עוד אין שאלות כאלה.</p>';
   }).catch(function () {

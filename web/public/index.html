@@ -606,7 +606,7 @@ button.btn.primary { color: #fff; }
     document.getElementById("r-gap").textContent = d.total ? Math.round(100 * d.not_found / d.total) + "%" : "–";
     document.getElementById("r-topic").textContent = d.topics.length ? d.topics[0][0] : "–";
     document.getElementById("r-recent").innerHTML = d.recent.slice(0, 4).map(function (g) {
-      return '<div class="gap"><span dir="auto">' + esc(g.q) + "</span><small>" + esc(g.topic || "") + "</small></div>";
+      return '<div class="gap"><span dir="auto">' + esc(g.q) + (g.count > 1 ? " ×" + g.count : "") + "</span><small>" + esc(g.topic || "") + "</small></div>";
     }).join("") || '<p class="skeleton">עוד אין שאלות כאלה.</p>';
   }).catch(function () {
     document.getElementById("r-live").textContent = "הדוח לא זמין כרגע";

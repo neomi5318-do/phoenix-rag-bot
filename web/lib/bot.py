@@ -182,6 +182,8 @@ def build_prompt(question, history, chunks):
 
 # שאלה על המקרה האישי של הלקוח. המודל מתבקש לזהות את זה בעצמו (כלל 3 בפרומפט),
 # והקוד בודק שוב - כי זה כלל שאסור לפספס.
+# שאלה כללית על מה אפשר ("אפשר לקנות?", "ניתן להעביר?") - נענית מהאתר גם כשהלקוח מספר על עצמו
+GENERAL = re.compile(r"(^|\s|,)(אפשר|ניתן|האם אפשר|האם ניתן|מותר) ל")
 PERSONAL = re.compile(r"(הפוליסה|התביעה|הביטוח|החשבון|הרכב|הדירה) שלי|אני מכוס|האם אני|כמה יעלה לי|כמה אשלם|במקרה שלי")
 
 
@@ -307,8 +309,10 @@ def answer(question, history, chunks):
         seen.add(c["url"])
         sources.append({"url": c["url"], "title": c["title"], "quote": quote})
 
-    if status == "personal" and sources and HOW_TO.search(question) and not PERSONAL.search(question):
-        status = "answered"                         # "יש לי נזילה, איך מגישים?" = שאלת איך-עושים, לא אישית
+    if status == "personal" and sources and (HOW_TO.search(question) or GENERAL.search(question)) \
+            and not PERSONAL.search(question):
+        status = "answered"                         # "יש לי נזילה, איך מגישים?" / "יש לי מחלה כרונית,
+                                                    # אפשר לקנות?" = שאלה כללית, גם כשמספרים על עצמך
     if status == "answered" and PERSONAL.search(question):
         status = "personal"                         # מידע כללי מהאתר + כרטיס המוקד לבדיקה אישית
     if status == "answered" and not sources:        # אין מקור -> אין תשובה

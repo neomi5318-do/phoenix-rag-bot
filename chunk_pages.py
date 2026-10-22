@@ -50,6 +50,12 @@ H = "⁣H"  # סימן פנימי לתחילת כותרת
 def page_lines(main_html):
     """ממיר HTML לרשימת שורות, כשכותרות מסומנות ברמה שלהן."""
     soup = BeautifulSoup(main_html, "html.parser")
+    # מספר וואטסאפ: באתר יש אייקון של וואטסאפ ליד המספר. האייקון הוא תמונה ונמחק בניקוי,
+    # ואז נשאר מספר בלי הסבר - והמודל חשב שמספר הוואטסאפ הוא הטלפון. לכן כותבים את זה במילים.
+    for a in soup.find_all("a", href=True):
+        text = a.get_text(" ", strip=True)
+        if ("whatsapp" in a["href"].lower() or "wa.me" in a["href"].lower()) and re.search(r"\d{3}", text):
+            a.string = f"וואטסאפ: {text}"
     for tag in soup(["button", "form", "input", "select", "img", "picture", "iframe"]):
         tag.decompose()
     for h in soup.find_all(["h1", "h2", "h3", "h4"]):

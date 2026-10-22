@@ -218,8 +218,8 @@ def _closest_line(answer, chunk_text):
     best, score = "", 0
     for line in chunk_text.split("\n"):
         line = _clean(line)
-        if not 25 <= len(line) <= 160:
-            continue
+        if not 25 <= len(line) <= 160 or " > " in line or line.endswith("?"):
+            continue                                # כותרות ושאלות לא מוכיחות כלום
         common = len(words & _words(line))
         if common > score:
             best, score = line, common
@@ -230,11 +230,28 @@ def _best_quote(model_quote, answer, chunk_text):
     """המשפט המודגש: הציטוט של המודל, אם הוא מופיע בקטע מילה במילה *וגם* קשור לתשובה.
     אם הוא אמיתי אבל לא קשור (למשל "אם מלאו לך 67 שנים..." בתשובה על איך מגישים) -
     בוחרים את השורה בקטע שהכי מוכיחה את התשובה. אם המודל לא העתיק נכון - גם."""
+    main = _main_point(answer)
     q = _verified_quote(model_quote, chunk_text)
-    alt = _closest_line(answer, chunk_text)
-    if q and alt and len(_words(answer) & _words(alt)) >= len(_words(answer) & _words(q)) + 3:
+    alt = _closest_line(main, chunk_text) or _closest_line(answer, chunk_text)
+    if q and alt and len(_words(main) & _words(alt)) >= len(_words(main) & _words(q)) + 3:
         return alt
     return q or alt
+
+
+def _main_point(answer):
+    """המשפט הראשון של התשובה = הנקודה העיקרית. המשפט המודגש צריך להוכיח אותו."""
+    first = re.split(r"(?<=[.!?])\s|\n", answer.strip(), maxsplit=1)[0]
+    return first if len(_words(first)) >= 4 else answer
+
+
+# הבטחות שהבוט לא יכול לקיים ("נבדוק את הפוליסה שלך ונחזור אליך") - נמחקות מתשובה אישית
+PROMISE = re.compile(r"(^|\s)(נבדוק|נעדכן|ניצור|נחזור|נטפל|נציג יחזור|יחזרו אליך|ייצרו איתך)")
+
+
+def _drop_promises(text):
+    parts = re.split(r"(?<=[.!?])\s+", text)
+    kept = [p for p in parts if not PROMISE.search(p)]
+    return " ".join(kept) if kept else text
 
 
 def _clean_table(t):
@@ -334,6 +351,7 @@ def answer(question, history, chunks):
         status, text = "not_found", NOT_FOUND
     if status == "personal" and is_hebrew(text):
         text = re.sub(r"^(כן|לא)\b[,.!]?\s*", "", text)   # לא עונים "כן/לא" על פוליסה של לקוח
+        text = _drop_promises(text)
         if not text.startswith(PERSONAL_OPENING):
             text = f"{PERSONAL_OPENING}\n{text}"
     if status == "not_found":

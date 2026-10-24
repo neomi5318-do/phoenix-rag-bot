@@ -1,181 +1,119 @@
-# 💬 הבוט שיודע את האתר של הפניקס
+# Phoenix Site Assistant — a RAG chatbot that answers only from the website
 
-בוט שאלות-תשובות שעונה ללקוחות **רק מתוך המידע שבאתר הפניקס** (fnx.co.il), מצרף **קישור למקור** לכל תשובה, ויודע להגיד **"זה לא כתוב באתר"** במקום להמציא.
+A Hebrew-first customer-service chatbot for the website of The Phoenix (fnx.co.il), an Israeli insurance and finance company. It answers visitors' questions **only from the content of the public website**, shows the exact source sentence for every answer, says plainly when something is not on the site, and routes personal questions to the right service center.
 
-פרויקט להאקתון AI של קוד פתוח 2026, אתגר הפניקס.
+Built for the **Open Code AI Hackathon 2026** (The Phoenix challenge). Not an official Phoenix service.
+
+**[Live demo](https://makor-phoenix.vercel.app)** · **[1-minute video](https://makor-phoenix.vercel.app/media/demo.mp4)** · **[Content-gap report](https://makor-phoenix.vercel.app/insights.html)**
+
+![The assistant answering a claims question with a checklist and a highlighted source sentence](docs/screenshot.png)
 
 ---
 
-## מה הבוט עושה
+## What it does
 
-| הלקוחה שואלת | הבוט |
+- **Answers only from the site.** No general knowledge, no guessing. If the answer isn't on fnx.co.il, the bot says so and points to the relevant service center.
+- **A source for every answer.** Each source card shows the page address and the exact sentence the answer relies on. Clicking it opens the real Phoenix page with that sentence already highlighted (browser Text Fragments).
+- **Knows its limits.** Questions about the user's own policy or claim get general information from the site plus the matching service center (phone, WhatsApp, hours, and whether it is open right now) — never a "yes/no" about a personal policy.
+- **Follow-up questions.** "And how long until I get an answer?" is answered from the same page as the previous answer.
+- **Multilingual.** Ask in Hebrew, Russian, Arabic or English and get the answer in that language; the quoted source stays in Hebrew so it can be verified.
+- **Richer answers when they help.** A comparison table for "what's the difference between…" questions, and a "what to prepare" checklist for claim questions.
+- **Voice.** Ask by speaking (speech-to-text fills the input) and listen to the answer (text-to-speech).
+- **Original feature — content-gap report.** Every on-topic question that has no answer on the site is logged (numbers and emails masked, no personal data), grouped by site area, and shown to the content team: a ready-made list of what visitors look for and don't find. Gibberish and off-topic questions are filtered out.
+- **Drop-in widget.** One `<script>` tag adds the chat bubble to any page, without changing the host site.
+
+## How it works
+
+```
+ Build time (once)                                   Request time (every question)
+ ─────────────────                                   ─────────────────────────────
+ sitemap.xml                                         question (+ previous turn)
+   │  polite crawler: 1,103 public pages               │
+   ▼                                                    ▼
+ clean + split by headings: 4,641 chunks              hybrid retrieval: semantic (e5) + keyword (BM25), RRF fusion
+   │                                                    │  → 6 distinct chunks (follow-ups start from the previous page)
+   ▼                                                    ▼
+ multilingual-e5 embeddings (Chroma)                  LLM (Gemini / Groq chain) → strict JSON
+   │                                                    │
+   ▼                                                    ▼
+ chunks + vectors shipped to the server               guardrails in code → answer + sources + service center
+                                                        │
+                                                        └─ no answer on the site → content-gap report
+```
+
+**Guardrails are enforced in code, not only in the prompt:**
+
+| Rule | How it is enforced |
 |---|---|
-| "יש לי נזילה בבית, איך מגישים תביעה?" | עונה בכמה משפטים מתוך עמוד התביעות, ומצרף את הקישור |
-| "ותוך כמה זמן מקבלים תשובה?" | מבין שזו שאלת המשך, ועונה מאותו נושא - או אומר שזה לא כתוב ומפנה לשירות הלקוחות |
-| "האם הפוליסה **שלי** מכסה את זה?" | מסביר מה האתר אומר באופן כללי, ומפנה לשירות הלקוחות לבדיקת הפוליסה האישית |
-| "מה מחיר מניית הפניקס?" | "המידע לא מופיע באתר" - בלי לנחש |
+| Only the site is a source | The model sees only the 6 retrieved chunks. An "answered" result with no source is turned into "not found". Questions with no lexical or semantic match never reach the model. |
+| No invented links | The model returns a chunk *number*; the code builds the link from the chunk's stored URL. |
+| Real quotes | The quoted sentence must appear verbatim in the chunk and support the answer's main point; otherwise a matching line from the page is used instead. |
+| No personal advice | Personal questions are detected by the model and by a second check in code; they get a fixed opening that refers to customer service, with no "yes/no" and no promises. |
+| Prompt injection | The user's text is delimited and treated as data, never as instructions or sources. |
 
-**הכללים שהבוט חייב לשמור:** המקור היחיד הוא האתר · כל תשובה עם מקור (אין מקור - אין תשובה) · אין ייעוץ אישי ואין גישה למידע של לקוח · עברית ברורה וקצרה.
+**Resilience on free-tier APIs:** a chain of 13 models (Gemini, Gemma, and Groq-hosted open models, optionally on two Gemini keys). If a model is slower than 3 seconds, the next one starts in parallel and the first valid answer wins; failures fall through instantly; daily quotas are detected and skipped; retries use exponential backoff within a 40-second budget. Repeated questions are served from a 3-day cache.
 
----
+## Tech stack
 
-## 🚀 גרסת האתר (Vercel) - תיקיית `web/`
+| Area | Tools |
+|---|---|
+| Crawling & processing | Python, requests, BeautifulSoup |
+| Embeddings & retrieval | multilingual-e5-base (sentence-transformers for indexing, ONNX Runtime for queries), BM25 (rank-bm25), Reciprocal Rank Fusion, Chroma, NumPy |
+| LLMs | Google Gemini / Gemma API, Groq (gpt-oss, Qwen) — REST, JSON-schema output |
+| Backend | Flask on Vercel (serverless) |
+| Storage | Upstash Redis (content-gap report, answer cache) |
+| Frontend | Vanilla JavaScript and CSS (no framework), Web Speech API, Text Fragments |
+| Quality | 30-question evaluation suite, simulated failure tests for the model chain |
 
-**האתר החי: https://makor-phoenix.vercel.app** · דף אחד, והצ'אט בבועה בפינה - כמו שהוא ייראה באתר הפניקס אחרי שמדביקים שורה אחת בקוד.
-(בתיקייה הראשית יש גם גרסת Streamlit פשוטה, שממנה התחלנו.)
-- **הפיצ'ר המקורי - דוח "מה חסר באתר":** כל שאלה שלא נמצאה לה תשובה נרשמת (בלי פרטים מזהים), ממוינת לפי אזור באתר, ומוצגת לצוות התוכן.
-- **הקישור שמדגיש:** כל מקור נפתח בעמוד האמיתי באתר הפניקס, עם המשפט שעליו התשובה נשענת כבר מסומן בצהוב.
-- **המוקד הנכון:** בשאלה אישית, כרטיס של המוקד המתאים: טלפון, וואטסאפ, שעות, והאם הוא פתוח עכשיו.
-- **מהיר:** חיפוש בלי PyTorch (ONNX), חימום כשהדף נפתח, ו"מירוץ מגובה" בין Gemini ל-Groq.
+## Evaluation
 
-הסבר מלא על הארכיטקטורה: [`web/README.md`](web/README.md).
+30 hand-written questions modeled on the site's FAQ and claims pages, graded strictly (correct facts, a source from the right site area, and correct refusals):
 
-## איך זה עובד
+| Type | Questions | Result |
+|---|---|---|
+| Answer exists on the site | 18 | 18/18 |
+| Not on the site (must not invent) | 6 | 6/6 |
+| Boundaries (personal, advice, jailbreak) | 4 | 4/4 |
+| Follow-up questions | 2 | 2/2 |
 
-```
- האתר (sitemap)
-      │  collect_pages.py   איסוף מנומס של ~1,100 עמודים ציבוריים
-      ▼
- data/raw_pages.jsonl
-      │  chunk_pages.py     ניקוי + חיתוך לפי סעיפים וכותרות
-      ▼
- data/chunks.json  (~4,600 קטעים)
-      │  build_index.py     אמבדינגים מקומיים → מסד וקטורי Chroma
-      ▼
- chroma_db/
-      │  rag.py             אחזור היברידי + תשובה עם מקור
-      ▼
- app.py (צ׳אט)  ·  eval.py (הערכה על 30 שאלות)
-```
+Retrieval alone finds the needed facts for 19/19 answerable questions. Full results: [`eval/web_results.json`](eval/web_results.json) and on the [live page](https://makor-phoenix.vercel.app/#trust).
 
-### 1. איסוף התוכן - `collect_pages.py`
-- רשימת העמודים נלקחת מה-**sitemap** של האתר (1,643 כתובות).
-- נכנסים **כל האזורים שפונים ללקוח**: רכב, דירה, בריאות, נסיעות, חיות מחמד, משכנתא, פנסיה, גמל, חיסכון, תביעות ושירות לקוחות ועוד - 1,140 כתובות.
-- **מוחרגים בכוונה:** קשרי משקיעים (241 עמודים של דוחות כספיים), תגיות, דרושים, עמודי תאגיד ואנגלית - הם לא עונים על שאלות לקוח, ורק היו מוסיפים רעש לחיפוש.
-- קצב מנומס: בקשה אחת בכל פעם, עם השהיה.
-- נשמר ה-HTML של אזור התוכן (`<main>`) ולא טקסט נקי - **אוספים פעם אחת, מעבדים כמה שרוצים**, בלי לסרוק שוב את האתר.
-- לכל עמוד נשמר **תאריך איסוף** - כדי לדעת מתי לרענן.
-- אפשר לעצור ולהמשיך: כל עמוד נכתב מיד, והרצה חוזרת מדלגת על מה שכבר נאסף.
+Edge cases tested: model rate limits and outages (429/503), a crawler blocked by the site (exponential backoff, no WAF bypass), duplicate content, prompt injection, gibberish, and HTML injection in answers (all output is escaped).
 
-### 2. ניקוי וחיתוך - `chunk_pages.py`
-- **חיתוך לפי סעיפים, לא לפי מספר תווים:** העמוד מחולק לפי הכותרות (h1/h2/h3). שאלה נפוצה והתשובה שלה נשארות **באותו קטע**.
-- לכל קטע מצורף "שביל" - כותרת העמוד > כותרת הסעיף - כדי שגם קטע קצר יידע על מה הוא מדבר.
-- סעיפים קטנים מתאחדים (עד ~900 תווים); סעיפים ארוכים מתפצלים עם חפיפה.
-- **לא זורקים שורות קצרות** - מספר טלפון כמו `*5070` הוא בדיוק המידע שלקוח מחפש.
-- מסננים: ההסתייגות המשפטית שחוזרת בכל עמוד, כפתורים, "אולי יעניין אותך", זמני קריאה.
-- **עמודים כפולים** (כתובות ישנות שמפנות לאותו עמוד) נשמרים פעם אחת - הוסרו 88.
-- סעיף שחוזר זהה בהרבה עמודים (למשל "כל הדרכים לדבר איתנו") נשמר פעם אחת.
-- מזהה קטע = hash של הכתובת והתוכן - יציב בין הרצות.
-
-### 3. אינדקס סמנטי - `build_index.py` + `embeddings.py`
-- מודל אמבדינג **פתוח ומקומי**: [`intfloat/multilingual-e5-base`](https://huggingface.co/intfloat/multilingual-e5-base) - תומך בעברית, רץ על CPU.
-- **למה מקומי?** בדרגה החינמית של Gemini מותרות 1,000 הטמעות ביום - והאתר הוא ~4,600 קטעים. מקומי = בלי מכסה, בלי עלות, והחיפוש לא תלוי בשירות חיצוני.
-- נבדק מול `bge-m3`: איכותי יותר אבל איטי פי 4 על CPU (71 דקות מול 18).
-- מסד וקטורי: **Chroma** (קובץ מקומי, בלי שרת).
-- הרצה חוזרת מוסיפה רק קטעים חדשים ומוחקת קטעים שנעלמו.
-
-### 4. שכבת התשובה - `rag.py`
-1. **שאלת המשך** ("ותוך כמה זמן?") מנוסחת מחדש כשאלה עצמאית לפי השיחה.
-2. **אחזור היברידי:** חיפוש סמנטי (וקטורים) **+** חיפוש מילות מפתח (BM25), ממוזגים ב-RRF. וקטורים מבינים ניסוחים שונים; מילות מפתח תופסות מונחים מדויקים ("השתתפות עצמית", "אמסטף").
-3. 7 הקטעים הטובים נכנסים לפרומפט, ממוספרים.
-4. המודל (Gemini Flash) מחזיר **JSON**: סטטוס (`answered` / `not_found` / `personal`), תשובה, ו**מספרי הקטעים** שעליהם נשען.
-5. **המקורות נבנים מהקטעים שהמודל ציין** - לא מכתובות שהמודל כותב בעצמו. כך אי אפשר לקבל קישור מומצא.
-6. תשובה "נענתה" בלי אף מקור? היא נחסמת והופכת ל"לא נמצא".
-
-**מודל השפה:** `gemini-3.8-flash`, ואחריו שרשרת גיבוי: Gemini 3.7 / 3.6 / 3.5 / 3.1-lite, ובסוף **Groq** (`gpt-oss-120b`, `qwen3.8-27b`). בדרגה החינמית לכל מודל של Gemini יש 20 בקשות ביום, ול-Groq כ-1,000 - אז כשמודל נחסם, עוברים לבא בתור. Gemini ראשון כי העברית שלו טובה יותר.
-
-### 5. ממשק - `app.py`
-צ׳אט ב-Streamlit, מימין לשמאל, עם היסטוריית שיחה, תג לכל תשובה (✅ נמצא באתר / ℹ️ לא מופיע / 👤 שאלה אישית) וקישורים למקורות.
-
----
-
-## הפעלה
+## Run locally
 
 ```bash
-# 1. התקנה
-python -m venv .venv
-source .venv/bin/activate          # ב-Windows: .venv\Scripts\activate
+cd web
 pip install -r requirements.txt
-
-# 2. מפתחות (חינמיים) בקובץ .env:
-#    Gemini מ-https://aistudio.google.com · Groq (גיבוי, לא חובה) מ-https://console.groq.com
-echo "GEMINI_API_KEY=המפתח_שלך" > .env
-echo "GROQ_API_KEY=המפתח_שלך" >> .env
-
-# 3. בניית הנתונים (פעם אחת)
-python collect_pages.py    # ~40 דקות, בקצב מנומס
-python chunk_pages.py      # שניות
-python build_index.py      # ~20 דקות על CPU (מוריד את מודל האמבדינג בפעם הראשונה, ~1GB)
-
-# 4. הצ'אט
-streamlit run app.py
-
-# 5. הערכה על 30 שאלות הבדיקה
-python eval.py             # תוצאות ב-eval/report.md
+# keys in ../.env: GEMINI_API_KEY, GROQ_API_KEY (optional: GEMINI_API_KEY_2, KV_REST_API_URL, KV_REST_API_TOKEN)
+python app.py                      # http://localhost:8000
+python eval_web.py full            # run the 30-question evaluation
+python tests/test_llm_chain.py     # model-chain failure tests (no API calls)
 ```
 
-**האינדקס והקטעים כבר בריפו** (`chroma_db/`, `data/chunks.json`), אז אפשר לדלג על שלב 3 ולהריץ את הצ'אט ישר.
+Rebuilding the data from the live site: `collect_pages.py` → `chunk_pages.py` → `build_index.py` (repo root), then `web/build_data.py`. The crawl resumes where it stopped and the index updates only changed chunks.
 
-**העלאה לענן (Streamlit Community Cloud, חינם):** share.streamlit.io → Create app → הריפו הזה, `main`, `app.py` → ב-Advanced settings מוסיפים Secrets:
-```toml
-GEMINI_API_KEY = "..."
-GROQ_API_KEY = "..."
+## Project structure
+
+```
+collect_pages.py, chunk_pages.py, build_index.py   build pipeline (crawl → chunks → vectors)
+web/app.py                                         Flask server: /api/ask, /api/insights
+web/lib/retrieval.py                               hybrid search and fusion
+web/lib/bot.py                                     prompt, guardrails, quote verification, routing
+web/lib/llm.py                                     model chain, hedged requests, backoff
+web/lib/insights.py, web/lib/cache.py              content-gap report, answer cache
+web/public/                                        widget, landing page, report page
+eval/                                              questions and results
+app.py, rag.py                                     the first Streamlit prototype
 ```
 
-**רענון התוכן:** מוחקים את `data/raw_pages.jsonl` (או רק עמודים ישנים לפי `fetched_at`) ומריצים שוב את שלב 3. `build_index.py` יעדכן רק את מה שהשתנה.
+## Limitations
+
+- PDFs (policies, forms) and a few JavaScript-only listing pages are not included.
+- Free-tier model quotas: when the fastest models are exhausted, answers are slower (10–20 s) until the daily reset.
+- Hebrew keyword search uses simple prefix stripping, not a full morphological analyzer.
+- Content is a snapshot from 20.10.2026; refreshing means re-running the build pipeline.
 
 ---
 
-## הערכה
-
-**תוצאה: 30/30** · יש תשובה באתר 18/18 · לא באתר (לא להמציא) 6/6 · גבולות 4/4 · שאלות המשך 2/2
-
-**מה למדנו מהבדיקה** - שלוש פעמים הבדיקה עצמה הייתה שגויה, לא הבוט, ותיקנו אותה בגלוי:
-- שאלת הנזילה ושאלת הכלב נענו נכון מ**תת-עמוד** באותו אזור באתר (מפורט יותר מהעמוד שציפינו לו). לכן "מקור נכון" = עמוד מאותו אזור באתר, **וגם** העובדה המרכזית מופיעה בתשובה (למשל "250").
-- בשאלת הטלפון הבוט ענה `*5432` - ובדיקה ידנית הראתה שזה בדיוק מה שכתוב בעמוד "צור קשר" (מוקד שירות לקוחות תחום דירה).
-- בשאלת מחיר אישי ("כמה יעלה לי?") הבוט סיווג כ"שאלה אישית" והפנה להצעת מחיר - התנהגות נכונה, שלא ממציאה מספר.
-
-ושני תיקונים אמיתיים בבוט שהבדיקה גילתה:
-- באתר יש **שני עמודים שסותרים זה את זה** (מי מבטח מבנה בדירה שכורה). הבוט בחר צד - הוספנו כלל: כשהקטעים סותרים, מציגים את שתי העמדות ומפנים לבירור.
-- שאלה על "**הפוליסה שלי**" נענתה כמו שאלה כללית - חידדנו שזו תמיד שאלה אישית שמופנית לשירות הלקוחות.
-
-**הערה כנה:** הבדיקה רצה על כמה מודלים (Gemini 3.x ו-Groq), לפי מה שהיה פנוי במכסה החינמית. מספר השאלות קטן (30), אז זה מדד לכיוון ולא הוכחה סטטיסטית.
-
-30 שאלות בקובץ `eval/questions.json`, בארבעה סוגים:
-
-| סוג | כמה | מה בודקים |
-|---|---|---|
-| יש תשובה באתר | 18 | תשובה נכונה **והעמוד הנכון** בין המקורות |
-| אין תשובה באתר | 6 | הבוט אומר "לא מופיע" - **לא ממציא** |
-| גבולות | 4 | אין ייעוץ אישי / מידע של לקוח; עמידות לניסיון לעקוף את ההוראות |
-| שאלות המשך | 2 | הבוט מבין הקשר מהשאלה הקודמת |
-
-הדוח המלא, כולל כל תשובה ומקורותיה: `eval/report.md`.
-
----
-
-## מגבלות ידועות
-
-- **קבצי PDF לא נכללים:** פוליסות, תקנונים וטפסים באתר הם קבצי PDF. כ-200 עמודים באתר הם בעיקר רשימות של מסמכים כאלה, ולכן התוכן שלהם לא נכנס לבוט.
-- **טבלאות ורשימות דינמיות** (למשל תשואות קרנות, ושלושה עמודי רשימה של טיפים ומבזקים) נטענות באתר דרך JavaScript ולא נאספו. ניסינו לפתוח אותם בדפדפן אוטומטי, וחומת ההגנה של האתר (AWS WAF) חוסמת. בכוונה לא עקפנו אותה. הסורק מסמן עמודים כאלה כ"ריקים" ומדווח עליהם, ושאלה על התוכן שלהם תקבל "לא כתוב באתר" ותירשם בדוח הפערים.
-- **36 כתובות שבמפת האתר מחזירות 404** (בעיקר עמודי תביעות בעברית שהוסרו). הן מדולגות.
-- **מכסות חינמיות:** 20 שאלות ביום לכל מודל Gemini, וכ-1,000 ב-Groq. שרשרת הגיבוי מספיקה להדגמה; לשימוש אמיתי צריך דרגה בתשלום (העלות זניחה - שבריר סנט לשאלה). כשהבוט עובר ל-Groq, הניסוח בעברית מעט פחות טבעי.
-- **עברית בלי מנתח מורפולוגי:** חיפוש מילות המפתח מוריד אות שימוש אחת בתחילת מילה (״לכלב״ → ״כלב״) - פתרון פשוט, לא מושלם.
-- **תמונת מצב:** התוכן נכון לתאריך האיסוף (נשמר לכל עמוד, `fetched_at`). רענון = להריץ שוב את שלבי האיסוף, החיתוך והאינדקס (ראו "עדכון תוכן" ב-`web/README.md`). האיסוף ממשיך מאיפה שעצר, ועמודים שנחסמו מנוסים שוב.
-
-## מקרי קצה שבדקנו
-
-| מקרה | מה המערכת עושה |
-|---|---|
-| מודל מחזיר 429 / 503 | עוברת מיד למודל הבא. מודל איטי מ-3 שניות מקבל "מתחרה" במקביל. כשכולם נכשלו: Backoff של 1 ו-3 שניות, ותקרה של 40 שניות. מכסה יומית מזוהה, והמודל מדולג ל-3 שעות. נבדק ב-`web/tests/test_llm_chain.py` |
-| האתר חוסם (403/429/5xx) | Exponential Backoff (5, 15, 45 שניות), כיבוד Retry-After, וניסיון חוזר בהרצה הבאה |
-| כפילויות | עמוד שמפנה לאותה כתובת או זהה בטקסט נשמר פעם אחת. סעיף שחוזר בהרבה עמודים נשמר פעם אחת. בחיפוש, קטע עם טקסט זהה מופיע פעם אחת. קטעים שרק *דומים* לא נמחקים, כי ההבדל ביניהם הוא לרוב המספר החשוב |
-| אין תשובה באתר | אין מקור = אין תשובה (נאכף בקוד). ציטוט חייב להופיע מילה במילה. שאלה שאין לה אף מילה משותפת עם האתר וגם דמיון נמוך מ-0.80 מקבלת "לא נמצא" בלי מודל. סף דמיון לבדו לא מספיק: "אמסטף" (0.77) נמוך מ"איך מחליפים צמיג" (0.85) |
-| Prompt Injection | השאלה מוקפת ב-<<< >>> ומוגדרת כטקסט של לקוח, לא כהוראה ולא כמקור. מקורות נבחרים רק לפי מספר קטע. נבדקו: חשיפת פרומפט, התחזות, קטע מזויף, JSON כפוי, בקשת קוד |
-| שאלת המשך | מתחילה מהעמוד שממנו ענינו קודם (כמו בתסריט של האתגר: "ותוך כמה זמן מקבלים תשובה?" ← "בתוך 30 יום") |
-| שאלה אישית | לא עונים "כן/לא" על פוליסה של לקוח. מסבירים מה כתוב באתר באופן כללי ומפנים לשירות הלקוחות |
-| קוד זדוני בתשובה (XSS) | כל טקסט עובר escaping בדפדפן. נבדק עם קוד זדוני בכל שדה |
-
-## דרך העבודה
-
-הפרויקט נבנה בעבודה משותפת עם Claude (Anthropic) כעוזר פיתוח: ההחלטות על היקף האיסוף, בחירת הכלים, הכללים של הבוט ושאלות הבדיקה התקבלו יחד, והקוד נכתב ונבדק בסבבים.
+The Phoenix name and website content belong to The Phoenix. This is an independent hackathon project.
